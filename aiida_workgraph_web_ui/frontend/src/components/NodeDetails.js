@@ -1,8 +1,8 @@
 import React from 'react';
 import styled from 'styled-components';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism'; // Correct import for 'dark' style
-import { useNavigate } from 'react-router-dom'; // Use the useNavigate hook
+import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { useNavigate } from 'react-router-dom';
 
 const WorkGraphButton = styled.button`
   padding: 10px;
@@ -14,9 +14,9 @@ const WorkGraphButton = styled.button`
   margin-top: 10px;
 
   &:disabled {
-    background-color: #ccc; /* Gray color for disabled state */
-    cursor: not-allowed; /* Change cursor to indicate it's not clickable */
-    color: #666; /* Optional: change text color for disabled state */
+    background-color: #ccc;
+    cursor: not-allowed;
+    color: #666;
   }
 `;
 
@@ -35,21 +35,21 @@ const NodeDetailsPanel = styled.div`
   align-items: flex-start;
   overflow-y: auto;
   z-index: 20;
-  border-left: 1px solid #ddd; /* Add a border to separate it from the editor */
+  border-left: 1px solid #ddd;
 `;
 
 const NodeDetailsTitle = styled.h3`
   font-size: 1.2em;
   margin-bottom: 0.5em;
-  color: #333; /* Darker color for headers */
+  color: #333;
 `;
 
 const NodeDetailsTable = styled.div`
   width: 100%;
-  flex-grow: 1; /* Allow this section to take available space */
-  overflow-y: auto; /* Make only this section scrollable if needed */
+  flex-grow: 1;
+  overflow-y: auto;
   margin-bottom: 1em;
-  background-color: #f7f7f7; /* Light gray background for better readability */
+  background-color: #f7f7f7;
 `;
 
 const NodeDetailRow = styled.div`
@@ -59,41 +59,26 @@ const NodeDetailRow = styled.div`
 `;
 
 const NodeDetailProperty = styled.div`
-  width: 50%; /* Adjust for better alignment */
+  width: 50%;
   font-weight: bold;
   text-align: left;
   font-size: 0.9em;
-  color: #555; /* Slightly darker for better readability */
+  color: #555;
 `;
 
 const NodeDetailValue = styled.div`
-  width: 50%; /* Adjust accordingly */
+  width: 50%;
   text-align: left;
   font-size: 0.8em;
-  color: #666; /* Slightly lighter to differentiate from property */
+  color: #666;
 `;
 
 const CloseButton = styled.button`
   align-self: flex-end;
   margin-bottom: 10px;
-  // Style your button as needed
 `;
 
 const PythonCode = styled(SyntaxHighlighter)`
-  width: 100%;
-  max-width: 100%; /* Limit the maximum width to prevent stretching */
-  max-height: 300px; /* Limit the maximum height to add a vertical scrollbar */
-  overflow-x: auto; /* Add a horizontal scrollbar if needed */
-  white-space: pre; /* Preserve whitespace */
-  margin-top: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 10px;
-  background-color: #f7f7f7;
-  font-family: monospace; /* Use a monospace font */
-`;
-
-const InputsCode = styled(SyntaxHighlighter)`
   width: 100%;
   max-width: 100%;
   max-height: 300px;
@@ -107,70 +92,127 @@ const InputsCode = styled(SyntaxHighlighter)`
   font-family: monospace;
 `;
 
-const StyledLink = styled.span`
-  cursor: pointer;
-  text-decoration: underline;
-  color: blue;
-`;
-
-function NodeDetails({ selectedNode, onClose, setShowNodeDetails }) {
+function NodeDetails({
+  selectedNode,
+  onClose,
+  setShowNodeDetails,
+  parentPk,
+  parentPath,
+}) {
   const navigate = useNavigate();
+  const nodeType = selectedNode.node_type?.toUpperCase() || '';
+  const nodeLabel = selectedNode.label;
+  const processPk = selectedNode.process?.pk;
+  const nodeState = selectedNode.state?.toUpperCase() || '';
+
+  console.log('NodeDetails:', selectedNode);
 
   const handleClose = () => {
     setShowNodeDetails(false);
     onClose();
   };
 
-  const handleWorkGraphClick = () => {
-    if ((selectedNode.node_type.toUpperCase() === 'GRAPH_BUILDER' || selectedNode.node_type.toUpperCase() === 'WORKGRAPH') && selectedNode.process.pk) {
-      navigate(`/workgraph/${selectedNode.process.pk}`);
+  /**
+   * Utility to navigate to the sub-route if there's no direct process PK.
+   * E.g. /workgraph/45082/foo/bar
+   */
+  const navigateSubRoute = () => {
+    if (parentPath) {
+      navigate(`/workgraph/${parentPk}/${parentPath}/${nodeLabel}`);
+    } else {
+      navigate(`/workgraph/${parentPk}/${nodeLabel}`);
     }
   };
 
+  /**
+   * Main click handler for the "Go to WorkGraph" button
+   */
+  const handleWorkGraphClick = () => {
+    if (nodeType === 'GRAPH_BUILDER') {
+      // Only valid if we have a processPk
+      if (processPk) {
+        navigate(`/workgraph/${processPk}`);
+      }
+      // else disabled, do nothing
+    }
+    else if (nodeType === 'WORKGRAPH') {
+      // If there's a real process, navigate to that
+      // otherwise sub-route
+      if (processPk) {
+        navigate(`/workgraph/${processPk}`);
+      } else {
+        navigateSubRoute();
+      }
+    }
+    else if (nodeType === 'MAP') {
+      // For MAP, only if the state is in [RUNNING, FINISHED, FAILED]
+      if (['RUNNING', 'FINISHED', 'FAILED'].includes(nodeState)) {
+        navigateSubRoute();
+      }
+      // else disabled, do nothing
+    }
+  };
 
+  /**
+   * isButtonDisabled logic:
+   *  - GRAPH_BUILDER => disabled if no processPk
+   *  - WORKGRAPH => always enabled (sub-route is fallback)
+   *  - MAP => enabled only if state in [RUNNING, FINISHED, FAILED], else disabled
+   */
+  let isButtonDisabled = false;
+  if (nodeType === 'GRAPH_BUILDER') {
+    isButtonDisabled = !processPk;
+  }
+  else if (nodeType === 'WORKGRAPH') {
+    isButtonDisabled = false; // always enabled (sub-route fallback)
+  }
+  else if (nodeType === 'MAP') {
+    isButtonDisabled = !['RUNNING', 'FINISHED', 'FAILED'].includes(nodeState);
+  }
+
+  /**
+   * Render a nested list of inputs or outputs.
+   */
   const renderInputs = (inputs, depth = 0) => {
     return Object.entries(inputs).map(([key, value]) => {
-      const nodeId = Array.isArray(value) ? value[0] : value;
-      const nodeType = Array.isArray(value) ? value[1] : null;
-
       if (Array.isArray(value)) {
+        // e.g. [nodeId, nodeType]
+        const nodeId = value[0];
         return (
           <li key={key}>
-            <span >
-              {key}: <a href={`/datanode/${nodeId}`}>{nodeId}</a>
-            </span>
+            {key}: <a href={`/datanode/${nodeId}`}>{nodeId}</a>
           </li>
         );
-      } else if (typeof value === 'object') {
+      } else if (typeof value === 'object' && value !== null) {
+        // Nested dictionary
         return (
           <li key={key}>
-            <span >
-              {key}:
-            </span>
+            {key}:
             <ul>{renderInputs(value, depth + 1)}</ul>
           </li>
         );
-      } else {
-        return null; // or handle other types if needed
       }
+      return null;
     });
   };
-
-  // Determine if the button should be disabled
-  const isButtonDisabled = !selectedNode.process || !selectedNode.process.pk;
 
   return (
     <NodeDetailsPanel>
       <CloseButton onClick={handleClose}>Close</CloseButton>
+
       <NodeDetailsTitle>Node Details</NodeDetailsTitle>
-      {(selectedNode.node_type.toUpperCase() === 'GRAPH_BUILDER' || selectedNode.node_type.toUpperCase() === 'WORKGRAPH' || selectedNode.node_type.toUpperCase() === 'MAP') && (
-      <WorkGraphButton onClick={handleWorkGraphClick} disabled={isButtonDisabled}>
-        Go to WorkGraph
-      </WorkGraphButton>
+
+      {/* Show button only if type is GRAPH_BUILDER, WORKGRAPH, or MAP */}
+      {['GRAPH_BUILDER', 'WORKGRAPH', 'MAP'].includes(nodeType) && (
+        <WorkGraphButton onClick={handleWorkGraphClick} disabled={isButtonDisabled}>
+          Go to WorkGraph
+        </WorkGraphButton>
       )}
+
+      {/* Metadata table */}
       {selectedNode && (
         <NodeDetailsTable>
-          {selectedNode.metadata.map(([property, value]) => (
+          {selectedNode.metadata?.map(([property, value]) => (
             <NodeDetailRow key={property}>
               <NodeDetailProperty>{property}</NodeDetailProperty>
               <NodeDetailValue>{value}</NodeDetailValue>
@@ -183,17 +225,21 @@ function NodeDetails({ selectedNode, onClose, setShowNodeDetails }) {
       </div>
       <NodeDetailsTable>
         <ul style={{ margin: 10, padding: 5, textAlign: 'left' }}>
-          {renderInputs(selectedNode.inputs)}
+          {renderInputs(selectedNode.inputs || {})}
         </ul>
       </NodeDetailsTable>
+
+      {/* Outputs */}
       <div>
         <NodeDetailsTitle>Outputs:</NodeDetailsTitle>
       </div>
       <NodeDetailsTable>
         <ul style={{ margin: 10, padding: 5, textAlign: 'left' }}>
-          {renderInputs(selectedNode.outputs)}
+          {renderInputs(selectedNode.outputs || {})}
         </ul>
       </NodeDetailsTable>
+
+      {/* Executor code */}
       <div>
         <NodeDetailsTitle>Executor:</NodeDetailsTitle>
       </div>
