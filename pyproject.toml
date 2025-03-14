@@ -4,7 +4,7 @@ build-backend = "flit_core.buildapi"
 
 [project]
 name = "aiida-workgraph-web-ui"
-dynamic = ["version"]  # read from aiida_workgraph/__init__.py
+dynamic = ["version"]  # read from aiida_workgraph_web_ui/__init__.py
 description = "Design flexible node-based workflow for AiiDA calculation."
 authors = [{name = "Xing Wang", email = "xingwang1991@gmail.com"}]
 readme = "README.md"
