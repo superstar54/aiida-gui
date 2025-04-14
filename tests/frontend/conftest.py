@@ -5,7 +5,7 @@ from playwright.sync_api import sync_playwright
 from playwright.sync_api import expect
 
 from aiida_workgraph import WorkGraph
-
+from aiida import orm
 import uvicorn
 
 from multiprocessing import Process, Value
@@ -83,8 +83,13 @@ def ran_wg_calcfunction(
     """A workgraph with calcfunction."""
 
     wg = WorkGraph(name="test_debug_math")
-    sumdiff1 = wg.add_task("workgraph.test_sum_diff", "sumdiff1", x=2, y=3)
-    sumdiff2 = wg.add_task("workgraph.test_sum_diff", "sumdiff2", x=4)
+    sumdiff1 = wg.add_task(
+        "workgraph.test_sum_diff",
+        "sumdiff1",
+        x=orm.Int(2).store(),
+        y=orm.Int(3).store(),
+    )
+    sumdiff2 = wg.add_task("workgraph.test_sum_diff", "sumdiff2", x=orm.Int(4).store())
     wg.add_link(sumdiff1.outputs[0], sumdiff2.inputs[1])
     wg.run()
     yield wg

@@ -104,7 +104,7 @@ def test_workgraph_item(web_server, page, ran_wg_calcfunction):
     log_line = (
         page.locator(".log-content")
         .locator("div")
-        .filter(has_text=re.compile(r".*Task: sumdiff2 finished.*"))
+        .filter(has_text=re.compile(r".*Finalize workgraph*"))
     )
     log_line.wait_for(state="visible")
     assert log_line.is_visible()
@@ -138,8 +138,8 @@ def test_datanode_item(web_server, page, ran_wg_calcfunction):
 
 
 @pytest.mark.frontend
-def test_settings(web_server, page, ran_wg_calcfunction):
-    page.goto("http://localhost:8000/settings/")
+def test_daemon(web_server, page, ran_wg_calcfunction):
+    page.goto("http://localhost:8000/daemon/")
     # Verify that only one row is visible
     expect(page.locator(":nth-match(tr, 1)")).to_be_visible()
     expect(page.locator(":nth-match(tr, 2)")).to_be_hidden()
