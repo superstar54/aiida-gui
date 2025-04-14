@@ -4,7 +4,9 @@ import WorkGraphTable from './components/WorkGraphTable';
 import DataNodeTable from './components/DataNodeTable';
 import WorkGraphItem from './components/WorkGraphItem';
 import DataNodeItem from './components/DataNodeItem';
-import Settings from './components/Settings';
+import Daemon from './components/Daemon';
+import SchedulerList from './components/SchedulerList';
+import SchedulerDetail from './components/SchedulerDetail';
 import Layout from './components/Layout'; // Import the Layout component
 
 import './App.css';
@@ -17,7 +19,9 @@ function App() {
           <Routes>
             <Route path="/workgraph" element={<WorkGraphTable />} />
             <Route path="/datanode" element={<DataNodeTable />} />
-            <Route path="/settings" element={<Settings />} />
+            <Route path="/daemon" element={<Daemon />} />
+            <Route path="/scheduler" element={<SchedulerList />} />
+            <Route path="/scheduler/:name" element={<SchedulerDetail />} />
             <Route path="/" element={<Home />} />
             <Route path="/workgraph/:pk/*" element={<WorkGraphItem />} />
             <Route path="/datanode/:pk" element={<DataNodeItem />} />

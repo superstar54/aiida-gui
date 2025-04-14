@@ -20,14 +20,17 @@ function Home() {
               <Typography variant="h5" gutterBottom>
                 Application Sections
               </Typography>
-              <Button component={Link} to="/workgraph" variant="contained" color="primary" sx={{ margin: '0.5rem' }}>
+              <Button component={Link} to="/workgraph" variant="contained" color="primary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
                 WorkGraph Table
               </Button>
-              <Button component={Link} to="/datanode" variant="contained" color="primary" sx={{ margin: '0.5rem' }}>
+              <Button component={Link} to="/datanode" variant="contained" color="primary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
                 DataNode Table
               </Button>
-              <Button component={Link} to="/settings" variant="contained" color="primary" sx={{ margin: '0.5rem' }}>
-                Settings
+              <Button component={Link} to="/scheduler" variant="contained" color="primary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
+                Scheduler
+              </Button>
+              <Button component={Link} to="/daemon" variant="contained" color="primary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
+                Daemon
               </Button>
             </CardContent>
           </Card>
@@ -40,13 +43,13 @@ function Home() {
               <Typography variant="h5" gutterBottom>
                 External Resources
               </Typography>
-              <Button href="https://aiida-workgraph.readthedocs.io/en/latest/" target="_blank" variant="outlined" color="secondary" sx={{ margin: '0.5rem' }}>
+              <Button href="https://aiida-workgraph.readthedocs.io/en/latest/" target="_blank" variant="outlined" color="secondary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
                 Documentation
               </Button>
-              <Button href="https://github.com/aiidateam/aiida-workgraph" target="_blank" variant="outlined" color="secondary" sx={{ margin: '0.5rem' }}>
+              <Button href="https://github.com/aiidateam/aiida-workgraph" target="_blank" variant="outlined" color="secondary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
                 GitHub Repository
               </Button>
-              <Button href="https://aiida.discourse.group/" target="_blank" variant="outlined" color="secondary" sx={{ margin: '0.5rem' }}>
+              <Button href="https://aiida.discourse.group/" target="_blank" variant="outlined" color="secondary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
                 AiiDA Community Forum
               </Button>
             </CardContent>
