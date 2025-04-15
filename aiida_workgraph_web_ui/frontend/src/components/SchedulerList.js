@@ -182,7 +182,7 @@ function SchedulerList() {
 
   // Called when user clicks "Add" in the modal
   const handleAddScheduler = (data) => {
-    fetch('http://localhost:8000/api/scheduler/start', {
+    fetch('http://localhost:8000/api/scheduler/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -226,7 +226,7 @@ function SchedulerList() {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Running</th>
+            <th>Status</th>
             <th>Waiting</th>
             <th>Running Procs</th>
             <th>Running Calcjobs</th>
@@ -244,7 +244,9 @@ function SchedulerList() {
               >
                 {scheduler.name}
               </td>
-              <td>{scheduler.running ? 'Yes' : 'No'}</td>
+              <td style={{ color: scheduler.running ? 'green' : 'red' }}>
+                {scheduler.running ? 'Running' : 'Stopped'}
+              </td>
               <td>{scheduler.waiting_process_count}</td>
               <td>{scheduler.running_process_count}</td>
               <td>{scheduler.running_calcjob_count}</td>

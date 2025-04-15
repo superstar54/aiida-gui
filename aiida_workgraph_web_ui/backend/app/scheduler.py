@@ -12,6 +12,7 @@ from aiida_workgraph.engine.scheduler.client import (
 )
 from aiida_workgraph.engine.scheduler.scheduler import Scheduler
 import kiwipy
+from aiida.cmdline.utils.common import format_local_time
 
 router = APIRouter()
 
@@ -29,6 +30,11 @@ class SchedulerStatusModel(BaseModel):
     max_processes: int = Field(
         ..., description="Maximum number of concurrent processes"
     )
+    memory: t.Optional[float] = Field(None, description="Memory usage of the scheduler")
+    cpu: t.Optional[float] = Field(None, description="CPU usage of the scheduler")
+    pid: t.Optional[int] = Field(None, description="Process ID of the scheduler")
+    ctime: t.Optional[str] = Field(None, description="Creation time of the scheduler")
+    start_time: t.Optional[str] = Field(None, description="Start time of the scheduler")
 
 
 @router.get("/api/scheduler/list", response_model=t.List[SchedulerStatusModel])
@@ -40,8 +46,10 @@ async def list_schedulers():
     schedulers = get_all_schedulers()
     scheduler_list = []
     for sched in schedulers:
+        client = get_scheduler_client(scheduler_name=sched.name)
         try:
-            running = bool(Scheduler.get_status(name=sched.name))
+            client.get_status(timeout=1)
+            running = True
         except Exception:
             running = False
         scheduler_list.append(
@@ -61,19 +69,29 @@ async def list_schedulers():
 
 @router.get("/api/scheduler/status/{name}", response_model=SchedulerStatusModel)
 @with_dbenv()
-async def get_scheduler_status(name: str):
+async def get_scheduler_status(name: str, timeout=3):
     """
     Get status details for a scheduler by name.
     """
+
     sched = get_scheduler(name=name)
     if not sched:
         raise HTTPException(status_code=404, detail=f"Scheduler {name} not found.")
+    client = get_scheduler_client(scheduler_name=name)
+    worker_info = {}
     try:
-        running = bool(Scheduler.get_status(name=sched.name))
+        client.get_status(timeout=timeout)
+        worker_response = client.get_worker_info()
+        for pid, info in worker_response["info"].items():
+            if isinstance(info, dict):
+                worker_info["pid"] = pid
+                worker_info["memory"] = info.get("mem")
+                worker_info["cpu"] = info.get("cpu")
+                worker_info["start_time"] = format_local_time(info.get("create_time"))
+        running = True
     except Exception:
         running = False
-
-    return SchedulerStatusModel(
+    sched = SchedulerStatusModel(
         name=sched.name,
         pk=sched.pk,
         running=running,
@@ -82,7 +100,13 @@ async def get_scheduler_status(name: str):
         running_calcjob_count=len(sched.running_calcjob),
         max_calcjobs=sched.max_calcjobs,
         max_processes=sched.max_processes,
+        memory=worker_info.get("memory"),
+        cpu=worker_info.get("cpu"),
+        pid=worker_info.get("pid"),
+        ctime=format_local_time(sched.ctime),
+        start_time=worker_info.get("start_time"),
     )
+    return sched
 
 
 class SchedulerControlModel(BaseModel):
@@ -93,6 +117,33 @@ class SchedulerControlModel(BaseModel):
     max_processes: t.Optional[int] = Field(None, description="Maximum processes")
     foreground: t.Optional[bool] = Field(False, description="Run in foreground")
     timeout: t.Optional[int] = Field(None, description="Optional timeout value")
+
+
+@router.post("/api/scheduler/add", response_model=SchedulerStatusModel)
+@with_dbenv()
+async def add_scheduler_endpoint(control: SchedulerControlModel):
+    """
+    Start the scheduler with the given parameters.
+    """
+    from aiida_workgraph.orm.scheduler import SchedulerNode
+
+    sched = SchedulerNode()
+    sched.name = control.name
+    if control.max_calcjobs:
+        sched.max_calcjobs = control.max_calcjobs
+    if control.max_processes:
+        sched.max_processes = control.max_processes
+    sched.store()
+    return SchedulerStatusModel(
+        name=sched.name,
+        pk=sched.pk,
+        running=False,
+        waiting_process_count=len(sched.waiting_process),
+        running_process_count=len(sched.running_process),
+        running_calcjob_count=len(sched.running_calcjob),
+        max_calcjobs=sched.max_calcjobs,
+        max_processes=sched.max_processes,
+    )
 
 
 @router.post("/api/scheduler/start", response_model=SchedulerStatusModel)

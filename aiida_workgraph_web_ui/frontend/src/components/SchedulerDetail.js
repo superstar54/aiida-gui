@@ -41,6 +41,10 @@ export default function SchedulerDetail() {
   const [waitingProcessData, setWaitingProcessData] = useState([]);
   const [calcjobData, setCalcjobData] = useState([]);
 
+  // New time series for CPU & memory usage
+  const [cpuUsageData, setCpuUsageData] = useState([]);
+  const [memoryUsageData, setMemoryUsageData] = useState([]);
+
   // Inline editing states
   const [maxCalcjobsEdit, setMaxCalcjobsEdit] = useState('');
   const [maxProcessesEdit, setMaxProcessesEdit] = useState('');
@@ -57,13 +61,14 @@ export default function SchedulerDetail() {
   const chartHeights = { small: 300, medium: 500, large: 700 };
   const chartWidth = chartWidths[chartSize];
   const chartHeight = chartHeights[chartSize];
-
-  const chartFlexWidth = chartWidth; // or chartWidth + 20
+  const chartFlexWidth = chartWidth;
 
   const processChartRef = useRef(null);
   const calcjobChartRef = useRef(null);
+  // New ref for CPU/Memory chart
+  const cpuMemChartRef = useRef(null);
 
-  // Chart options
+  // Chart options for Processes (Running & Waiting)
   const processChartOptions = {
     responsive: false,
     plugins: {
@@ -101,6 +106,7 @@ export default function SchedulerDetail() {
     },
   };
 
+  // Chart options for Calcjobs
   const calcjobChartOptions = {
     responsive: false,
     plugins: {
@@ -126,6 +132,37 @@ export default function SchedulerDetail() {
     },
   };
 
+  // Chart options for CPU & Memory usage
+  const cpuMemChartOptions = {
+    responsive: false,
+    plugins: {
+      zoom: {
+        pan: { enabled: true, mode: 'x' },
+        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { tooltipFormat: 'HH:mm:ss', unit: 'second' },
+      },
+      y1: {
+        type: 'linear',
+        position: 'left',
+        beginAtZero: true,
+        title: { display: true, text: 'CPU (%)' },
+      },
+      y2: {
+        type: 'linear',
+        position: 'right',
+        beginAtZero: true,
+        grid: { drawOnChartArea: false },
+        title: { display: true, text: 'Memory' },
+      },
+    },
+  };
+
+  // Data fetch
   const fetchScheduler = () => {
     fetch(`http://localhost:8000/api/scheduler/status/${name}`)
       .then((response) => {
@@ -136,13 +173,18 @@ export default function SchedulerDetail() {
       })
       .then((data) => {
         setScheduler(data);
+
+        // Keep the input in sync if user is not editing
         if (!maxCalcjobsDirty) {
           setMaxCalcjobsEdit(data.max_calcjobs);
         }
         if (!maxProcessesDirty) {
           setMaxProcessesEdit(data.max_processes);
         }
+
         const currentTime = Date.now();
+
+        // Update running/waiting/calcjob time series
         setRunningProcessData((prev) =>
           [...prev, { x: currentTime, y: data.running_process_count }].slice(-20)
         );
@@ -151,6 +193,14 @@ export default function SchedulerDetail() {
         );
         setCalcjobData((prev) =>
           [...prev, { x: currentTime, y: data.running_calcjob_count }].slice(-20)
+        );
+
+        // Update CPU/Memory usage time series
+        setCpuUsageData((prev) =>
+          [...prev, { x: currentTime, y: data.cpu ?? 0 }].slice(-20)
+        );
+        setMemoryUsageData((prev) =>
+          [...prev, { x: currentTime, y: data.memory ?? 0 }].slice(-20)
         );
       })
       .catch((error) => console.error(error));
@@ -237,6 +287,28 @@ export default function SchedulerDetail() {
     ],
   };
 
+  // CPU/Memory chart data
+  const cpuMemChartData = {
+    datasets: [
+      {
+        label: 'CPU Usage (%)',
+        data: cpuUsageData,
+        fill: false,
+        borderColor: 'red',
+        tension: 0.1,
+        yAxisID: 'y1',
+      },
+      {
+        label: 'Memory Usage',
+        data: memoryUsageData,
+        fill: false,
+        borderColor: 'purple',
+        tension: 0.1,
+        yAxisID: 'y2',
+      },
+    ],
+  };
+
   if (!scheduler) {
     return <div>Loading scheduler details...</div>;
   }
@@ -256,24 +328,46 @@ export default function SchedulerDetail() {
         }}
       >
         <h3 style={{ marginBottom: '10px' }}>Overview</h3>
-        <div style={{ display: 'flex', gap: '30px', alignItems: 'flex-start' }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '6px 0' }}>
-              <strong>Status:</strong> {scheduler.running ? 'Running' : 'Stopped'}
+              <strong>Status:</strong> <span style={{ color: scheduler.running ? 'green' : 'red' }}>{scheduler.running ? 'Running' : 'Stopped'}</span>
             </p>
+            <p style={{ margin: '6px 0' }}>
+              <strong>Scheduler PK:</strong> {scheduler.pk}
+            </p>
+            <p style={{ margin: '6px 0' }}>
+              <strong>PID (Daemon):</strong> {scheduler.pid ?? 'N/A'}
+            </p>
+            <p style={{ margin: '6px 0' }}>
+              <strong>Create Time:</strong> {scheduler.ctime ?? 'N/A'}
+            </p>
+            <p style={{ margin: '6px 0' }}>
+              <strong>Start Time:</strong> {scheduler.start_time ?? 'N/A'}
+            </p>
+          </div>
+          <div style={{ flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '6px 0' }}>
               <strong>Waiting Processes:</strong> {scheduler.waiting_process_count}
             </p>
             <p style={{ margin: '6px 0' }}>
-              <strong>Running Processes:</strong>{' '}
-              {scheduler.running_process_count}/{scheduler.max_processes || 0}
+              <strong>Running Processes:</strong> {scheduler.running_process_count}/
+              {scheduler.max_processes || 0}
             </p>
             <p style={{ margin: '6px 0' }}>
-              <strong>Running Calcjobs:</strong>{' '}
-              {scheduler.running_calcjob_count}/{scheduler.max_calcjobs || 0}
+              <strong>Running Calcjobs:</strong> {scheduler.running_calcjob_count}/
+              {scheduler.max_calcjobs || 0}
             </p>
           </div>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: '250px' }}>
+            <p style={{ margin: '6px 0' }}>
+              <strong>CPU Usage (%):</strong> {scheduler.cpu ?? 0}
+            </p>
+            <p style={{ margin: '6px 0' }}>
+              <strong>Memory Usage (%):</strong> {scheduler.memory ?? 0}
+            </p>
+          </div>
+          <div style={{ flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '6px 0' }}>
               <strong>Max Calcjobs:</strong>{' '}
               <input
@@ -400,6 +494,33 @@ export default function SchedulerDetail() {
             ref={calcjobChartRef}
             data={calcjobChartData}
             options={calcjobChartOptions}
+            width={chartWidth}
+            height={chartHeight}
+          />
+        </div>
+
+        {/* CPU/Memory Chart Section */}
+        <div
+          style={{
+            flex: `0 0 ${chartFlexWidth}px`,
+            boxSizing: 'border-box',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '6px',
+            }}
+          >
+            <h4 style={{ margin: 0 }}>CPU & Memory Usage</h4>
+          </div>
+          <Line
+            key={`cpu-mem-chart-${chartSize}`}
+            ref={cpuMemChartRef}
+            data={cpuMemChartData}
+            options={cpuMemChartOptions}
             width={chartWidth}
             height={chartHeight}
           />
