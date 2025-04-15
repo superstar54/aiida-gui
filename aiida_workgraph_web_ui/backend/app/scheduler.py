@@ -22,7 +22,6 @@ class SchedulerStatusModel(BaseModel):
 
     name: str = Field(..., description="The name of the scheduler")
     pk: int = Field(..., description="Primary key of the scheduler")
-    running: bool = Field(..., description="Whether the scheduler is running")
     waiting_process_count: int = Field(..., description="Number of waiting processes")
     running_process_count: int = Field(..., description="Number of running processes")
     running_calcjob_count: int = Field(..., description="Number of running calcjobs")
@@ -30,6 +29,17 @@ class SchedulerStatusModel(BaseModel):
     max_processes: int = Field(
         ..., description="Maximum number of concurrent processes"
     )
+    ctime: t.Optional[str] = Field(None, description="Creation time of the scheduler")
+    running: t.Optional[bool] = Field(
+        None, description="Whether the scheduler is running"
+    )
+
+
+class DaemonStatusModel(BaseModel):
+    """Response model describing a scheduler's status."""
+
+    name: str = Field(..., description="The name of the scheduler")
+    running: bool = Field(..., description="Whether the scheduler is running")
     memory: t.Optional[float] = Field(None, description="Memory usage of the scheduler")
     cpu: t.Optional[float] = Field(None, description="CPU usage of the scheduler")
     pid: t.Optional[int] = Field(None, description="Process ID of the scheduler")
@@ -46,17 +56,11 @@ async def list_schedulers():
     schedulers = get_all_schedulers()
     scheduler_list = []
     for sched in schedulers:
-        client = get_scheduler_client(scheduler_name=sched.name)
-        try:
-            client.get_status(timeout=1)
-            running = True
-        except Exception:
-            running = False
         scheduler_list.append(
             SchedulerStatusModel(
                 name=sched.name,
                 pk=sched.pk,
-                running=running,
+                running=sched.is_running,
                 waiting_process_count=len(sched.waiting_process),
                 running_process_count=len(sched.running_process),
                 running_calcjob_count=len(sched.running_calcjob),
@@ -67,9 +71,9 @@ async def list_schedulers():
     return scheduler_list
 
 
-@router.get("/api/scheduler/status/{name}", response_model=SchedulerStatusModel)
+@router.get("/api/scheduler/data/{name}", response_model=SchedulerStatusModel)
 @with_dbenv()
-async def get_scheduler_status(name: str, timeout=3):
+async def get_scheduler_data(name: str, timeout=3):
     """
     Get status details for a scheduler by name.
     """
@@ -77,6 +81,26 @@ async def get_scheduler_status(name: str, timeout=3):
     sched = get_scheduler(name=name)
     if not sched:
         raise HTTPException(status_code=404, detail=f"Scheduler {name} not found.")
+    sched = SchedulerStatusModel(
+        name=sched.name,
+        pk=sched.pk,
+        waiting_process_count=len(sched.waiting_process),
+        running_process_count=len(sched.running_process),
+        running_calcjob_count=len(sched.running_calcjob),
+        max_calcjobs=sched.max_calcjobs,
+        max_processes=sched.max_processes,
+        ctime=format_local_time(sched.ctime),
+    )
+    return sched
+
+
+@router.get("/api/scheduler/status/{name}", response_model=DaemonStatusModel)
+@with_dbenv()
+async def get_scheduler_status(name: str, timeout=3):
+    """
+    Get status details for a scheduler by name.
+    """
+
     client = get_scheduler_client(scheduler_name=name)
     worker_info = {}
     try:
@@ -91,22 +115,15 @@ async def get_scheduler_status(name: str, timeout=3):
         running = True
     except Exception:
         running = False
-    sched = SchedulerStatusModel(
-        name=sched.name,
-        pk=sched.pk,
+    daemon = DaemonStatusModel(
+        name=name,
         running=running,
-        waiting_process_count=len(sched.waiting_process),
-        running_process_count=len(sched.running_process),
-        running_calcjob_count=len(sched.running_calcjob),
-        max_calcjobs=sched.max_calcjobs,
-        max_processes=sched.max_processes,
         memory=worker_info.get("memory"),
         cpu=worker_info.get("cpu"),
         pid=worker_info.get("pid"),
-        ctime=format_local_time(sched.ctime),
         start_time=worker_info.get("start_time"),
     )
-    return sched
+    return daemon
 
 
 class SchedulerControlModel(BaseModel):
@@ -276,14 +293,9 @@ async def set_max_calcjobs(control: SchedulerControlModel):
     except kiwipy.exceptions.UnroutableError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     sched = get_scheduler(name=control.name)
-    try:
-        running = bool(Scheduler.get_status(name=sched.name))
-    except Exception:
-        running = False
     return SchedulerStatusModel(
         name=sched.name,
         pk=sched.pk,
-        running=running,
         waiting_process_count=len(sched.waiting_process),
         running_process_count=len(sched.running_process),
         running_calcjob_count=len(sched.running_calcjob),
@@ -305,14 +317,9 @@ async def set_max_processes(control: SchedulerControlModel):
     except kiwipy.exceptions.UnroutableError as exc:
         raise HTTPException(status_code=500, detail=str(exc))
     sched = get_scheduler(name=control.name)
-    try:
-        running = bool(Scheduler.get_status(name=sched.name))
-    except Exception:
-        running = False
     return SchedulerStatusModel(
         name=sched.name,
         pk=sched.pk,
-        running=running,
         waiting_process_count=len(sched.waiting_process),
         running_process_count=len(sched.running_process),
         running_calcjob_count=len(sched.running_calcjob),

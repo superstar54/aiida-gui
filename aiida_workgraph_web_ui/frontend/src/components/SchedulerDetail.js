@@ -35,6 +35,7 @@ ChartJS.register(
 export default function SchedulerDetail() {
   const { name } = useParams();
   const [scheduler, setScheduler] = useState(null);
+  const [daemon, setDaemon] = useState({"running": null});
 
   // Time series data
   const [runningProcessData, setRunningProcessData] = useState([]);
@@ -56,125 +57,31 @@ export default function SchedulerDetail() {
   const [refreshInterval, setRefreshInterval] = useState(3000);
   const [chartSize, setChartSize] = useState('small');
 
-  // Define widths/heights for chart sizes
+  // Chart references
+  const processChartRef = useRef(null);
+  const calcjobChartRef = useRef(null);
+  const cpuMemChartRef = useRef(null);
+
+  // Chart size definitions
   const chartWidths = { small: 400, medium: 700, large: 1000 };
   const chartHeights = { small: 300, medium: 500, large: 700 };
   const chartWidth = chartWidths[chartSize];
   const chartHeight = chartHeights[chartSize];
   const chartFlexWidth = chartWidth;
 
-  const processChartRef = useRef(null);
-  const calcjobChartRef = useRef(null);
-  // New ref for CPU/Memory chart
-  const cpuMemChartRef = useRef(null);
-
-  // Chart options for Processes (Running & Waiting)
-  const processChartOptions = {
-    responsive: false,
-    plugins: {
-      zoom: {
-        pan: { enabled: true, mode: 'x' },
-        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-      },
-    },
-    scales: {
-      x: {
-        type: 'time',
-        time: { tooltipFormat: 'HH:mm:ss', unit: 'second' },
-      },
-      y1: {
-        type: 'linear',
-        position: 'left',
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1,
-          callback: (value) => Math.round(value),
-        },
-        title: { display: true, text: 'Running Processes' },
-      },
-      y2: {
-        type: 'linear',
-        position: 'right',
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1,
-          callback: (value) => Math.round(value),
-        },
-        grid: { drawOnChartArea: false },
-        title: { display: true, text: 'Waiting Processes' },
-      },
-    },
-  };
-
-  // Chart options for Calcjobs
-  const calcjobChartOptions = {
-    responsive: false,
-    plugins: {
-      zoom: {
-        pan: { enabled: true, mode: 'x' },
-        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-      },
-    },
-    scales: {
-      x: {
-        type: 'time',
-        time: { tooltipFormat: 'HH:mm:ss', unit: 'second' },
-      },
-      y: {
-        type: 'linear',
-        beginAtZero: true,
-        ticks: {
-          stepSize: 1,
-          callback: (value) => Math.round(value),
-        },
-        title: { display: true, text: 'Running Calcjobs' },
-      },
-    },
-  };
-
-  // Chart options for CPU & Memory usage
-  const cpuMemChartOptions = {
-    responsive: false,
-    plugins: {
-      zoom: {
-        pan: { enabled: true, mode: 'x' },
-        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
-      },
-    },
-    scales: {
-      x: {
-        type: 'time',
-        time: { tooltipFormat: 'HH:mm:ss', unit: 'second' },
-      },
-      y1: {
-        type: 'linear',
-        position: 'left',
-        beginAtZero: true,
-        title: { display: true, text: 'CPU (%)' },
-      },
-      y2: {
-        type: 'linear',
-        position: 'right',
-        beginAtZero: true,
-        grid: { drawOnChartArea: false },
-        title: { display: true, text: 'Memory' },
-      },
-    },
-  };
-
-  // Data fetch
+  // Fetch scheduler detail
   const fetchScheduler = () => {
-    fetch(`http://localhost:8000/api/scheduler/status/${name}`)
+    fetch(`http://localhost:8000/api/scheduler/data/${name}`)
       .then((response) => {
         if (!response.ok) {
-          throw new Error(`Failed to fetch scheduler ${name} status.`);
+          throw new Error(`Failed to fetch scheduler ${name} data.`);
         }
         return response.json();
       })
       .then((data) => {
         setScheduler(data);
 
-        // Keep the input in sync if user is not editing
+        // Keep the inline edits in sync if user isn't editing
         if (!maxCalcjobsDirty) {
           setMaxCalcjobsEdit(data.max_calcjobs);
         }
@@ -182,9 +89,8 @@ export default function SchedulerDetail() {
           setMaxProcessesEdit(data.max_processes);
         }
 
+        // Update chart data
         const currentTime = Date.now();
-
-        // Update running/waiting/calcjob time series
         setRunningProcessData((prev) =>
           [...prev, { x: currentTime, y: data.running_process_count }].slice(-20)
         );
@@ -194,8 +100,24 @@ export default function SchedulerDetail() {
         setCalcjobData((prev) =>
           [...prev, { x: currentTime, y: data.running_calcjob_count }].slice(-20)
         );
+      })
+      .catch((error) => console.error(error));
+  };
 
-        // Update CPU/Memory usage time series
+  // Fetch scheduler detail
+  const fetchDaemon = () => {
+    fetch(`http://localhost:8000/api/scheduler/status/${name}`)
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to fetch scheduler ${name} data.`);
+        }
+        return response.json();
+      })
+      .then((data) => {
+        setDaemon(data);
+
+        // Update chart data
+        const currentTime = Date.now();
         setCpuUsageData((prev) =>
           [...prev, { x: currentTime, y: data.cpu ?? 0 }].slice(-20)
         );
@@ -212,7 +134,60 @@ export default function SchedulerDetail() {
     return () => clearInterval(interval);
   }, [name, refreshInterval, maxCalcjobsDirty, maxProcessesDirty]);
 
-  // Update limit calls
+  useEffect(() => {
+    fetchDaemon();
+    const interval = setInterval(fetchDaemon, refreshInterval);
+    return () => clearInterval(interval);
+  }, [name, refreshInterval, maxCalcjobsDirty, maxProcessesDirty]);
+
+
+  /* ------------------------------
+   *    START / STOP HANDLERS
+   * ------------------------------ */
+  const handleStart = () => {
+    fetch('http://localhost:8000/api/scheduler/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        max_calcjobs: parseInt(maxCalcjobsEdit, 10) || undefined,
+        max_processes: parseInt(maxProcessesEdit, 10) || undefined,
+        foreground: false,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to start scheduler: ${name}`);
+        }
+        return response.json();
+      })
+      .then(() => {
+        toast.success(`Scheduler "${name}" started successfully`);
+        fetchScheduler(); // refresh detail
+      })
+      .catch((error) => toast.error(error.message));
+  };
+
+  const handleStop = () => {
+    fetch(`http://localhost:8000/api/scheduler/stop?name=${name}`, {
+      method: 'POST',
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to stop scheduler: ${name}`);
+        }
+        return response.json();
+      })
+      .then(() => {
+        toast.success(`Scheduler "${name}" stopped successfully`);
+        fetchScheduler(); // refresh detail
+      })
+      .catch((error) => toast.error(error.message));
+  };
+
+  /* ------------------------------
+   *    UPDATE LIMITS HANDLERS
+   * ------------------------------ */
   const updateMaxCalcjobs = () => {
     fetch('http://localhost:8000/api/scheduler/set_max_calcjobs', {
       method: 'POST',
@@ -253,7 +228,100 @@ export default function SchedulerDetail() {
       .catch((error) => toast.error(error.message));
   };
 
-  // Chart data
+  /* ------------------------------
+   *    CHART CONFIGS
+   * ------------------------------ */
+  const processChartOptions = {
+    responsive: false,
+    plugins: {
+      zoom: {
+        pan: { enabled: true, mode: 'x' },
+        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { tooltipFormat: 'HH:mm:ss', unit: 'second' },
+      },
+      y1: {
+        type: 'linear',
+        position: 'left',
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          callback: (value) => Math.round(value),
+        },
+        title: { display: true, text: 'Running Processes' },
+      },
+      y2: {
+        type: 'linear',
+        position: 'right',
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          callback: (value) => Math.round(value),
+        },
+        grid: { drawOnChartArea: false },
+        title: { display: true, text: 'Waiting Processes' },
+      },
+    },
+  };
+
+  const calcjobChartOptions = {
+    responsive: false,
+    plugins: {
+      zoom: {
+        pan: { enabled: true, mode: 'x' },
+        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { tooltipFormat: 'HH:mm:ss', unit: 'second' },
+      },
+      y: {
+        type: 'linear',
+        beginAtZero: true,
+        ticks: {
+          stepSize: 1,
+          callback: (value) => Math.round(value),
+        },
+        title: { display: true, text: 'Running Calcjobs' },
+      },
+    },
+  };
+
+  const cpuMemChartOptions = {
+    responsive: false,
+    plugins: {
+      zoom: {
+        pan: { enabled: true, mode: 'x' },
+        zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' },
+      },
+    },
+    scales: {
+      x: {
+        type: 'time',
+        time: { tooltipFormat: 'HH:mm:ss', unit: 'second' },
+      },
+      y1: {
+        type: 'linear',
+        position: 'left',
+        beginAtZero: true,
+        title: { display: true, text: 'CPU (%)' },
+      },
+      y2: {
+        type: 'linear',
+        position: 'right',
+        beginAtZero: true,
+        grid: { drawOnChartArea: false },
+        title: { display: true, text: 'Memory' },
+      },
+    },
+  };
+
   const processChartData = {
     datasets: [
       {
@@ -287,7 +355,6 @@ export default function SchedulerDetail() {
     ],
   };
 
-  // CPU/Memory chart data
   const cpuMemChartData = {
     datasets: [
       {
@@ -315,6 +382,8 @@ export default function SchedulerDetail() {
 
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
+      <ToastContainer position="top-right" autoClose={3000} />
+
       <h2 style={{ textAlign: 'center' }}>Scheduler: {scheduler.name}</h2>
 
       {/* Overview Section */}
@@ -331,19 +400,22 @@ export default function SchedulerDetail() {
         <div style={{ display: 'flex', gap: '30px', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '6px 0' }}>
-              <strong>Status:</strong> <span style={{ color: scheduler.running ? 'green' : 'red' }}>{scheduler.running ? 'Running' : 'Stopped'}</span>
+              <strong>Status:</strong>{' '}
+              <span style={{ color: daemon.running ? 'green' : 'red' }}>
+                {daemon.running ? 'Running' : 'Stopped'}
+              </span>
             </p>
             <p style={{ margin: '6px 0' }}>
               <strong>Scheduler PK:</strong> {scheduler.pk}
             </p>
             <p style={{ margin: '6px 0' }}>
-              <strong>PID (Daemon):</strong> {scheduler.pid ?? 'N/A'}
+              <strong>PID (Daemon):</strong> {daemon.pid ?? 'N/A'}
             </p>
             <p style={{ margin: '6px 0' }}>
               <strong>Create Time:</strong> {scheduler.ctime ?? 'N/A'}
             </p>
             <p style={{ margin: '6px 0' }}>
-              <strong>Start Time:</strong> {scheduler.start_time ?? 'N/A'}
+              <strong>Start Time:</strong> {daemon.start_time ?? 'N/A'}
             </p>
           </div>
           <div style={{ flex: 1, minWidth: '250px' }}>
@@ -361,42 +433,10 @@ export default function SchedulerDetail() {
           </div>
           <div style={{ flex: 1, minWidth: '250px' }}>
             <p style={{ margin: '6px 0' }}>
-              <strong>CPU Usage (%):</strong> {scheduler.cpu ?? 0}
+              <strong>CPU Usage (%):</strong> {daemon.cpu ?? 0}
             </p>
             <p style={{ margin: '6px 0' }}>
-              <strong>Memory Usage (%):</strong> {scheduler.memory ?? 0}
-            </p>
-          </div>
-          <div style={{ flex: 1, minWidth: '250px' }}>
-            <p style={{ margin: '6px 0' }}>
-              <strong>Max Calcjobs:</strong>{' '}
-              <input
-                name="maxCalcjobs"
-                type="number"
-                value={maxCalcjobsEdit}
-                onFocus={() => setMaxCalcjobsDirty(true)}
-                onBlur={() => {
-                  setMaxCalcjobsDirty(false);
-                  updateMaxCalcjobs();
-                }}
-                onChange={(e) => setMaxCalcjobsEdit(e.target.value)}
-                style={{ width: '80px', marginRight: '5px' }}
-              />
-            </p>
-            <p style={{ margin: '6px 0' }}>
-              <strong>Max Processes:</strong>{' '}
-              <input
-                name="maxProcesses"
-                type="number"
-                value={maxProcessesEdit}
-                onFocus={() => setMaxProcessesDirty(true)}
-                onBlur={() => {
-                  setMaxProcessesDirty(false);
-                  updateMaxProcesses();
-                }}
-                onChange={(e) => setMaxProcessesEdit(e.target.value)}
-                style={{ width: '80px', marginRight: '5px' }}
-              />
+              <strong>Memory Usage:</strong> {daemon.memory ?? 0}
             </p>
           </div>
         </div>
@@ -406,32 +446,86 @@ export default function SchedulerDetail() {
       <div
         style={{
           marginBottom: '20px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          background: '#eaeaea',
-          padding: '10px',
+          background: '#fafafa',
+          padding: '15px',
           borderRadius: '8px',
+          boxShadow: '0px 0px 5px rgba(0,0,0,0.1)',
         }}
       >
-        <div>
-          <label style={{ marginRight: '5px' }}>Refresh Interval:</label>
-          <select
-            value={refreshInterval}
-            onChange={(e) => setRefreshInterval(Number(e.target.value))}
-          >
-            <option value={1000}>1 sec</option>
-            <option value={3000}>3 sec</option>
-            <option value={5000}>5 sec</option>
-            <option value={30000}>30 sec</option>
-          </select>
-        </div>
-        <div>
-          <label style={{ marginRight: '5px' }}>Chart Size:</label>
-          <select value={chartSize} onChange={(e) => setChartSize(e.target.value)}>
-            <option value="small">Small</option>
-            <option value="medium">Medium</option>
-            <option value="large">Large</option>
-          </select>
+        <h3>Controls & Settings</h3>
+        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Start/Stop Buttons */}
+          <div>
+            {daemon.running ? (
+              <button
+                onClick={handleStop}
+                style={{ ...buttonStyle, backgroundColor: '#dc3545' }}
+              >
+                Stop
+              </button>
+            ) : (
+              <button
+                onClick={handleStart}
+                style={{ ...buttonStyle, backgroundColor: '#28a745' }}
+              >
+                Start
+              </button>
+            )}
+          </div>
+
+          {/* Max Calcjobs & Max Processes */}
+          <div>
+            <label style={{ marginRight: '8px' }}>Max Calcjobs:</label>
+            <input
+              type="number"
+              value={maxCalcjobsEdit}
+              onFocus={() => setMaxCalcjobsDirty(true)}
+              onBlur={() => {
+                setMaxCalcjobsDirty(false);
+                updateMaxCalcjobs();
+              }}
+              onChange={(e) => setMaxCalcjobsEdit(e.target.value)}
+              style={{ width: '80px', marginRight: '5px' }}
+            />
+          </div>
+          <div>
+            <label style={{ marginRight: '8px' }}>Max Processes:</label>
+            <input
+              type="number"
+              value={maxProcessesEdit}
+              onFocus={() => setMaxProcessesDirty(true)}
+              onBlur={() => {
+                setMaxProcessesDirty(false);
+                updateMaxProcesses();
+              }}
+              onChange={(e) => setMaxProcessesEdit(e.target.value)}
+              style={{ width: '80px', marginRight: '5px' }}
+            />
+          </div>
+
+          {/* Chart Refresh Interval */}
+          <div>
+            <label style={{ marginRight: '5px' }}>Refresh Interval:</label>
+            <select
+              value={refreshInterval}
+              onChange={(e) => setRefreshInterval(Number(e.target.value))}
+            >
+              <option value={1000}>1 sec</option>
+              <option value={3000}>3 sec</option>
+              <option value={5000}>5 sec</option>
+              <option value={30000}>30 sec</option>
+            </select>
+          </div>
+
+          {/* Chart Size */}
+          <div>
+            <label style={{ marginRight: '5px' }}>Chart Size:</label>
+            <select value={chartSize} onChange={(e) => setChartSize(e.target.value)}>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -452,16 +546,7 @@ export default function SchedulerDetail() {
             boxSizing: 'border-box',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '6px',
-            }}
-          >
-            <h4 style={{ margin: 0 }}>Processes (Running & Waiting)</h4>
-          </div>
+          <h4>Processes (Running & Waiting)</h4>
           <Line
             key={`process-chart-${chartSize}`}
             ref={processChartRef}
@@ -479,16 +564,7 @@ export default function SchedulerDetail() {
             boxSizing: 'border-box',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '6px',
-            }}
-          >
-            <h4 style={{ margin: 0 }}>Running Calcjobs</h4>
-          </div>
+          <h4>Running Calcjobs</h4>
           <Line
             key={`calcjob-chart-${chartSize}`}
             ref={calcjobChartRef}
@@ -506,16 +582,7 @@ export default function SchedulerDetail() {
             boxSizing: 'border-box',
           }}
         >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '6px',
-            }}
-          >
-            <h4 style={{ margin: 0 }}>CPU & Memory Usage</h4>
-          </div>
+          <h4>CPU & Memory Usage</h4>
           <Line
             key={`cpu-mem-chart-${chartSize}`}
             ref={cpuMemChartRef}
@@ -526,8 +593,15 @@ export default function SchedulerDetail() {
           />
         </div>
       </div>
-
-      <ToastContainer position="top-right" autoClose={3000} />
     </div>
   );
 }
+
+/** A little styling for the Start/Stop buttons. */
+const buttonStyle = {
+  padding: '6px 12px',
+  border: 'none',
+  borderRadius: '4px',
+  color: '#fff',
+  cursor: 'pointer',
+};
