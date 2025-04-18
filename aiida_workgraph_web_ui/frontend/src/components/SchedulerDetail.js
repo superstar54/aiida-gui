@@ -19,6 +19,8 @@ import 'chartjs-adapter-date-fns';
 import { Line } from 'react-chartjs-2';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import NodeTable from './NodeTable';                       // the generic table
+import { extraActions } from './ProcessTable'; // the generic table
 
 ChartJS.register(
   CategoryScale,
@@ -31,6 +33,57 @@ ChartJS.register(
   TimeScale,
   zoomPlugin
 );
+
+
+export const processColumns = linkPrefix => ([
+  { field:'pk', headerName:'PK', width:90,
+    renderCell:p => <a href={`${linkPrefix}/${p.value}`}>{p.value}</a> },
+  { field:'ctime', headerName:'Created',     width:150 },
+  { field:'process_label', headerName:'Process label', width:260, sortable:false },
+  {
+    field: 'process_state',
+    headerName: 'State',
+    width: 140,
+    sortable: false,
+    renderCell: ({ row }) => {
+      const { process_state, exit_status } = row;
+      let color = 'inherit';
+
+      switch (process_state) {
+        case 'Finished':
+          {
+            const statusCode = parseInt(exit_status, 10);
+            color = !isNaN(statusCode) && statusCode > 0 ? 'red' : 'green';
+          }
+          return <span style={{ color }}>{process_state} [{exit_status}]</span>;
+      case 'Excepted':
+        case 'Failed':
+          color = 'red';
+          break;
+        case 'Running':
+          color = 'blue';
+          break;
+        case 'Waiting':
+          color = 'orange';
+          break;
+        default:
+          color = 'inherit';
+      }
+
+      return <span style={{ color }}>{process_state}</span>;
+    },
+  },
+  { field:'process_status', headerName:'Status', width:140, sortable:false },
+  { field:'label',         headerName:'Label',  width:220, editable:true },
+  { field:'description',   headerName:'Description', width:240, editable:true },
+  { field:'exit_status',   headerName:'Exit status', sortable:false },
+  { field:'exit_message',  headerName:'Exit message', width:240, sortable:false },
+  { field: 'priority', headerName: 'Priority', width: 90,
+    type: 'number',
+    editable: true, sortable: false },
+  { field:'paused',        headerName:'Paused', width:100,
+    renderCell:({ value }) => value ? 'Yes' : 'No' },
+]);
 
 export default function SchedulerDetail() {
   const { name } = useParams();
@@ -593,6 +646,17 @@ export default function SchedulerDetail() {
           />
         </div>
       </div>
+      {/* ----- member table ----- */}
+      <NodeTable
+        title=""
+        endpointBase={`http://localhost:8000/api/scheduler/${name}/process`}
+        linkPrefix="/process"           /* click through to the underlying node */
+        config={{
+          columns       : processColumns,
+          buildExtraActions: extraActions,
+          editableFields: ['label', 'description', 'priority'],
+        }}
+      />
     </div>
   );
 }
