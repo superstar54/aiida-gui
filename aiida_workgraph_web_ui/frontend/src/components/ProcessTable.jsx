@@ -2,7 +2,7 @@ import { IconButton, Tooltip } from '@mui/material';
 import { Pause, PlayArrow } from '@mui/icons-material';
 import NodeTable from './NodeTable';
 
-const processColumns = linkPrefix => ([
+export const processColumns = linkPrefix => ([
   { field:'pk', headerName:'PK', width:90,
     renderCell:p => <a href={`${linkPrefix}/${p.value}`}>{p.value}</a> },
   { field:'ctime', headerName:'Created',     width:150 },
@@ -22,8 +22,8 @@ const processColumns = linkPrefix => ([
             const statusCode = parseInt(exit_status, 10);
             color = !isNaN(statusCode) && statusCode > 0 ? 'red' : 'green';
           }
-          break;
-        case 'Excepted':
+          return <span style={{ color }}>{process_state} [{exit_status}]</span>;
+      case 'Excepted':
         case 'Failed':
           color = 'red';
           break;
@@ -31,14 +31,13 @@ const processColumns = linkPrefix => ([
           color = 'blue';
           break;
         case 'Waiting':
-        case 'Created':
           color = 'orange';
           break;
         default:
           color = 'inherit';
       }
 
-      return <span style={{ color }}>{process_state} [{exit_status}]</span>;
+      return <span style={{ color }}>{process_state}</span>;
     },
   },
   { field:'process_status', headerName:'Status', width:140, sortable:false },
@@ -51,7 +50,7 @@ const processColumns = linkPrefix => ([
 ]);
 
 /* pause / play buttons – delete is handled generically */
-function extraActions(row, { endpointBase, refetch }) {
+export function extraActions(row, { endpointBase, refetch }) {
     const post = url => fetch(url, { method:'POST' }).then(refetch);
 
     if (row.paused)
@@ -64,16 +63,17 @@ function extraActions(row, { endpointBase, refetch }) {
         </Tooltip>
       );
 
-    if (/(Finished|Failed|Excepted)/.test(row.process_state))
-      return null;                       // only Delete remains → NodeTable shows it
-
-    return (
-      <Tooltip title="Pause">
-        <IconButton onClick={() => post(`${endpointBase}/pause/${row.pk}`)}>
-          <Pause/>
-        </IconButton>
-      </Tooltip>
-    );
+    // Only show Pause if the state is Running or Waiting
+    if (['Running', 'Waiting'].includes(row.process_state)) {
+        return (
+        <Tooltip title="Pause">
+            <IconButton onClick={() => post(`${endpointBase}/pause/${row.pk}`)}>
+            <Pause />
+            </IconButton>
+        </Tooltip>
+        );
+    }
+    return null;
   }
 
 export function ProcessTable() {

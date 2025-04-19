@@ -2,7 +2,7 @@
 from __future__ import annotations
 import typing as t
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from pydantic import BaseModel, Field
 from aiida.cmdline.utils.decorators import with_dbenv
 from aiida_workgraph.engine.scheduler.client import (
@@ -13,8 +13,34 @@ from aiida_workgraph.engine.scheduler.client import (
 from aiida_workgraph.engine.scheduler.scheduler import Scheduler
 import kiwipy
 from aiida.cmdline.utils.common import format_local_time
+from aiida import orm
 
 router = APIRouter()
+
+
+def projected_data_to_dict_process(qb, project):
+    """
+    Convert the projected data from a QueryBuilder to a list of dictionaries.
+    """
+    from aiida_workgraph_web_ui.backend.app.utils import time_ago
+
+    # Iterate over the results and convert each row to a dictionary
+    results = []
+    for row in qb.all():
+        item = dict(zip(project or [], row))
+        # Add computed/presentational fields
+        item["pk"] = item.pop("id")
+        item["ctime"] = time_ago(item.pop("ctime"))
+        item["process_label"] = item.pop("attributes.process_label")
+        process_state = item.pop("attributes.process_state")
+        item["process_state"] = process_state.title() if process_state else None
+        item["process_status"] = item.pop("attributes.process_status")
+        item["exit_status"] = item.pop("attributes.exit_status")
+        item["exit_message"] = item.pop("attributes.exit_message")
+        item["priority"] = item.pop("extras._scheduler_priority")
+        item["paused"] = item.pop("attributes.paused")
+        results.append(item)
+    return results
 
 
 class SchedulerStatusModel(BaseModel):
@@ -326,3 +352,74 @@ async def set_max_processes(control: SchedulerControlModel):
         max_calcjobs=sched.max_calcjobs,
         max_processes=sched.max_processes,
     )
+
+
+@router.get("/api/scheduler/{name}/process-data")
+async def read_scheduler_process(
+    name: str,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(15, gt=0, le=500),
+    sortField: str = Query("pk"),
+    sortOrder: str = Query("desc", pattern="^(asc|desc)$"),
+    filterModel: t.Optional[str] = Query(None),
+):
+    from aiida_workgraph.engine.scheduler.client import get_scheduler
+    from .node_table import process_project
+
+    project = process_project + ["extras._scheduler", "extras._scheduler_priority"]
+    scheduler = get_scheduler(name=name)
+    waiting_process = scheduler.waiting_process
+    running_process = scheduler.running_process
+    processes = waiting_process + running_process
+    if not processes:
+        return {"total": 0, "data": []}
+
+    qb = orm.QueryBuilder()
+    qb.append(
+        orm.ProcessNode,
+        filters={"id": {"in": processes}},
+        project=project,
+        tag="n",
+    )
+
+    # priorities = scheduler.get_process_priority()
+    # server‑side filters coming from the DataGrid
+    if filterModel:
+        from aiida_workgraph_web_ui.backend.app.utils import (
+            translate_datagrid_filter_json,
+        )
+
+        qb.add_filter("n", translate_datagrid_filter_json(filterModel, project=project))
+
+    qb.order_by({"n": {sortField: sortOrder}})
+    total = qb.count()
+    qb.offset(skip).limit(limit)
+
+    results = projected_data_to_dict_process(qb, project)
+    return {"total": total, "data": results}
+
+
+@router.put("/api/scheduler" + "/{name}" + "/process-data" + "/{id}")
+async def update_node(
+    name: str,
+    id: int,
+    payload: t.Dict[str, t.Union[str, int]] = Body(...),
+):
+    try:
+        node = orm.load_node(id)
+    except Exception:
+        raise HTTPException(status_code=404, detail=f"Process {id} not found")
+    allowed = {"label", "description", "priority"}
+    touched = False
+    updated_data = {}
+    for k, v in payload.items():
+        if k in allowed:
+            if k == "priority":
+                node.base.extras.set("_scheduler_priority", v)
+            else:
+                setattr(node, k, v)
+            touched = True
+            updated_data[k] = v
+    if not touched:
+        raise HTTPException(status_code=400, detail="No updatable fields provided")
+    return {"updated": True, "pk": id, **updated_data}
