@@ -1,6 +1,8 @@
 import { IconButton, Tooltip } from '@mui/material';
-import { Pause, PlayArrow } from '@mui/icons-material';
+import { Pause, PlayArrow, HighlightOff } from '@mui/icons-material';
+import { toast } from 'react-toastify';       // NEW
 import NodeTable from './NodeTable';
+
 
 export const processColumns = linkPrefix => ([
   { field:'pk', headerName:'PK', width:90,
@@ -49,32 +51,58 @@ export const processColumns = linkPrefix => ([
     renderCell:({ value }) => value ? 'Yes' : 'No' },
 ]);
 
-/* pause / play buttons – delete is handled generically */
-export function extraActions(row, { endpointBase, refetch }) {
-    const post = url => fetch(url, { method:'POST' }).then(refetch);
 
-    if (row.paused)
-      return (
-        <Tooltip title="Resume">
-          <IconButton color="success"
-            onClick={() => post(`${endpointBase}/play/${row.pk}`)}>
-            <PlayArrow/>
+/* pause / play / kill buttons – now with confirmation for “Kill” */
+export function extraActions(row, { actionBase, refetch, openConfirmModal }) {
+  const post = url => fetch(url, { method:'POST' }).then(() => refetch());
+
+  const buttons = [];
+
+  if (row.paused) {
+    buttons.push(
+      <Tooltip title="Resume" key="resume">
+        <IconButton color="success" onClick={() => post(`${actionBase}/play/${row.pk}`)}>
+          <PlayArrow/>
+        </IconButton>
+      </Tooltip>
+    );
+  }
+
+  if (['Running', 'Waiting'].includes(row.process_state)) {
+    if (!row.paused) {
+      buttons.push(
+        <Tooltip title="Pause" key="pause">
+          <IconButton onClick={() => post(`${actionBase}/pause/${row.pk}`)}>
+            <Pause/>
           </IconButton>
         </Tooltip>
       );
-
-    // Only show Pause if the state is Running or Waiting
-    if (['Running', 'Waiting'].includes(row.process_state)) {
-        return (
-        <Tooltip title="Pause">
-            <IconButton onClick={() => post(`${endpointBase}/pause/${row.pk}`)}>
-            <Pause />
-            </IconButton>
-        </Tooltip>
-        );
     }
-    return null;
+    buttons.push(
+      <Tooltip title="Kill" key="kill">
+        <IconButton
+          color="error"
+          onClick={() =>
+            openConfirmModal(
+              <p>
+                Kill&nbsp;process&nbsp;PK&nbsp;{row.pk}?<br/>
+                <b>This action is irreversible.</b>
+              </p>,
+              () =>
+                post(`${actionBase}/kill/${row.pk}`)
+                  .then(() => toast.success(`Killed PK ${row.pk}`))
+                  .catch(() => toast.error('Kill failed'))
+            )
+          }
+        >
+          <HighlightOff/>
+        </IconButton>
+      </Tooltip>
+    );
   }
+
+  return <>{buttons}</>;
+}
 
 export function ProcessTable() {
     return (
@@ -82,6 +110,7 @@ export function ProcessTable() {
         title="Process nodes"
         endpointBase="http://localhost:8000/api/process"
         linkPrefix="/process"
+        actionBase={`http://localhost:8000/api/process`}
         config={{
           columns       : processColumns,
           buildExtraActions: extraActions,
@@ -99,6 +128,7 @@ export function ProcessTable() {
         title="WorkGraph nodes"
         endpointBase="http://localhost:8000/api/workgraph"
         linkPrefix="/workgraph"
+        actionBase={`http://localhost:8000/api/process`}
         config={{
           columns       : processColumns,
           buildExtraActions: extraActions,

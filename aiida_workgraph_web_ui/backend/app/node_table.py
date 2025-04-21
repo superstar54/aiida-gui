@@ -67,13 +67,18 @@ def make_node_router(
     prefix: str,  # ⬛  URL prefix, e.g. "workgraph" → /api/workgraph-data
     project: Optional[List[str]] = None,
     get_data_func: callable = projected_data_to_dict,
+    inclue_delete_route: bool = True,
 ) -> APIRouter:
     """
     Return an APIRouter exposing GET /…-data, PUT /…-data/{id},
     POST pause/play and DELETE with dry‑run for any AiiDA node subclass.
     """
     from aiida.orm import QueryBuilder
-    from aiida.engine.processes.control import pause_processes, play_processes
+    from aiida.engine.processes.control import (
+        pause_processes,
+        play_processes,
+        kill_processes,
+    )
     from aiida.tools import delete_nodes
     from aiida_workgraph_web_ui.backend.app.utils import (
         translate_datagrid_filter_json,
@@ -151,21 +156,31 @@ def make_node_router(
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    @router.delete(f"/api/{prefix}/delete" + "/{id}")
-    async def delete(
-        id: int, dry_run: bool = False
-    ) -> Dict[str, Union[bool, str, List[int]]]:
+    @router.post(f"/api/{prefix}/kill" + "/{id}")
+    async def kill(id: int):
         try:
-            deleted, ok = delete_nodes([id], dry_run=dry_run)
-            return {
-                "deleted": ok,
-                "message": (
-                    f"{'Deleted' if ok else 'Did not delete'} {node_cls.__name__} {id}"
-                    + (" [dry‑run]" if dry_run else "")
-                ),
-                "deleted_nodes": list(deleted),
-            }
+            kill_processes([orm.load_node(id)])
+            return {"message": f"Resumed {node_cls.__name__} {id}"}
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    if inclue_delete_route:
+
+        @router.delete(f"/api/{prefix}/delete" + "/{id}")
+        async def delete(
+            id: int, dry_run: bool = False
+        ) -> Dict[str, Union[bool, str, List[int]]]:
+            try:
+                deleted, ok = delete_nodes([id], dry_run=dry_run)
+                return {
+                    "deleted": ok,
+                    "message": (
+                        f"{'Deleted' if ok else 'Did not delete'} {node_cls.__name__} {id}"
+                        + (" [dry‑run]" if dry_run else "")
+                    ),
+                    "deleted_nodes": list(deleted),
+                }
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=str(e))
 
     return router
