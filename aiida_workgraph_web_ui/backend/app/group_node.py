@@ -57,7 +57,7 @@ router = make_node_router(
 async def read_group_summary(id: int) -> Dict[str, Union[str, int]]:
     try:
         g = orm.load_group(id)
-        return {
+        summary = {
             "pk": g.pk,
             "uuid": g.uuid,
             "label": g.label,
@@ -65,6 +65,7 @@ async def read_group_summary(id: int) -> Dict[str, Union[str, int]]:
             "type_string": g.type_string,
             "count": g.count(),
         }
+        return summary
     except Exception:
         raise HTTPException(status_code=404, detail=f"Group {id} not found")
 
@@ -141,6 +142,25 @@ async def delete(
             "message": (
                 f"{'Deleted' if ok else 'Did not delete'} {orm.Group.__name__} {id}"
             ),
+        }
+    except Exception as e:
+        error_traceback = traceback.format_exc()  # Capture the full traceback
+        print(error_traceback)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/api/groupnode/{group_id}/members/remove/{node_id}")
+async def delete_node(
+    group_id: int,
+    node_id: int,
+) -> Dict[str, Union[bool, str, List[int]]]:
+
+    try:
+        group = orm.load_group(group_id)
+        group.remove_nodes([orm.load_node(node_id)])
+        return {
+            "removed": True,
+            "message": f"Removed node {node_id} from the group",
         }
     except Exception as e:
         error_traceback = traceback.format_exc()  # Capture the full traceback

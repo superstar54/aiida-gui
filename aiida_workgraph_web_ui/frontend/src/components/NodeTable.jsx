@@ -66,12 +66,14 @@ export default function NodeTable({
 
   /* ─────────────────────────── generic confirm‑modal state ────────────────────────── */
   const [modalOpen,   setModalOpen]   = useState(false);
+  const [modalTitle,   setModalTitle]   = useState(null);
   const [modalBody,   setModalBody]   = useState(null);
   const [onConfirm,   setOnConfirm]   = useState(() => () => {});
   const [deleteGroupNodes, setDeleteGroupNodes] = useState(false); // only used by group delete
 
   /** open any confirm‑modal */
-  const openConfirmModal = (body, confirmFn) => {
+  const openConfirmModal = (title, body, confirmFn) => {
+    setModalTitle(title);
     setModalBody(body);
     setOnConfirm(() => confirmFn);        // store callback
     setModalOpen(true);
@@ -151,7 +153,7 @@ export default function NodeTable({
             });
         };
 
-        openConfirmModal(body, confirmFn);
+        openConfirmModal('Confirm deletion', body, confirmFn);
       })
       .catch(() => toast.error('Could not fetch delete preview'));
   };
@@ -169,12 +171,14 @@ export default function NodeTable({
         <>
           {/* caller‑supplied extra buttons get full access to confirm‑modal helper */}
           {config.buildExtraActions?.(p.row, { actionBase, refetch, openConfirmModal })}
-          {/* universal delete button */}
-          <Tooltip title="Delete">
-            <IconButton color="error" onClick={() => askDelete(p.row, refetch)}>
-              <Delete/>
-            </IconButton>
-          </Tooltip>
+          {/* conditionally render delete button (default: true) */}
+          {(config.includeDeleteButton ?? true) && (
+            <Tooltip title="Delete">
+              <IconButton color="error" onClick={() => askDelete(p.row, refetch)}>
+                <Delete />
+              </IconButton>
+            </Tooltip>
+          )}
         </>
       ),
     },
@@ -217,6 +221,7 @@ export default function NodeTable({
 
       <ConfirmDeleteModal
         open     ={modalOpen}
+        title     ={modalTitle}
         body     ={modalBody}
         onClose  ={() => setModalOpen(false)}
         onConfirm={() => {
