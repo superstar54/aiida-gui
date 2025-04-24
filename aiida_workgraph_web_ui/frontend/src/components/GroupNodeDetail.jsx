@@ -1,58 +1,100 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import NodeTable from './NodeTable';                       // the generic table
+import NodeTable from './NodeTable';
 import { IconButton, Tooltip } from '@mui/material';
-import { Delete } from '@mui/icons-material';
+import { RemoveCircleOutline } from '@mui/icons-material';
 import { toast } from 'react-toastify';
-import { Card, CardContent, CardHeader } from '@mui/material';
+import { Card, CardContent } from '@mui/material';
 import Skeleton from '@mui/material/Skeleton';
 
-
-/* -------------------------------- config for the member table -------------------------------- */
-const memberColumns = linkPrefix => ([
-  { field:'pk',       headerName:'PK',    width:90,
-    renderCell:p => <Link to={`${linkPrefix}/${p.value}`}>{p.value}</Link> },
-  { field:'ctime',    headerName:'Created', width:150 },
-  { field:'node_type',headerName:'Type',    width:250 },
-  { field:'label',    headerName:'Label',   width:250, editable:true },
-  { field:'description', headerName:'Description', width:250, editable:true },
+/* -------------------------------- dynamic columns for members -------------------------------- */
+const memberColumns = () => ([
+  {
+    field: 'pk',
+    headerName: 'PK',
+    width: 120,
+    renderCell: ({ row, value }) => {
+      // choose link based on node_type prefix
+      const typeKey = row.node_type.toLowerCase();
+      const prefix = typeKey.startsWith('data')
+        ? '/datanode'
+        : '/process';
+      return <Link to={`${prefix}/${value}`}>{value}</Link>;
+    }
+  },
+  { field: 'ctime', headerName: 'Created', width: 160 },
+  { field: 'node_type', headerName: 'Type', width: 200 },
+  { field: 'label', headerName: 'Label', width: 220, editable: true },
+  { field: 'description', headerName: 'Description', width: 260, editable: true },
 ]);
 
-/* optional: allow removing members from the group (delete icon)           */
-function memberActions(row, { endpointBase, refetch }) {
+/* -------------------------------- remove-from-group action with confirmation -------------------------------- */
+function memberActions(row, { actionBase, refetch, openConfirmModal }) {
+  const handleRemove = () => {
+    openConfirmModal(
+      'Confirm Removal',
+      <p>
+        Remove node PK {row.pk} from this group? <br/>
+        <b>You can add it back later if needed.</b>
+      </p>,
+      () => {
+        const url = `${actionBase}/remove/${row.pk}`;
+        console.log('removing', url);
+        fetch(url, { method: 'DELETE' })
+          .then(r => r.json())
+          .then(d => {
+            if (d.removed) toast.success(d.message);
+            else throw new Error('Remove failed');
+          })
+          .catch(err => toast.error(err.message || 'Remove failed'))
+          .finally(() => refetch());
+      }
+    );
+  };
+
   return (
     <Tooltip title="Remove from group">
-      <IconButton color="error"
-        onClick={() =>
-          fetch(`${endpointBase}/delete/${row.pk}`, { method:'DELETE' })
-            .then(r => r.json())
-            .then(d => {
-              if (d.deleted) toast.success(d.message);
-              refetch();
-            })
-        }>
-        <Delete/>
+      <IconButton color="warning" onClick={handleRemove}>
+        <RemoveCircleOutline />
       </IconButton>
     </Tooltip>
   );
 }
 
-const editableFields = ['label','description'];
+const editableFields = ['label', 'description'];
 
-/* -------------------------------- component -------------------------------- */
 export default function GroupNodeDetail() {
-  const { pk } = useParams();                          // group PK from URL
+  const { pk } = useParams();
   const [summary, setSummary] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalTitle, setModalTitle] = useState(null);
+  const [modalBody, setModalBody] = useState(null);
+  const [onConfirm, setOnConfirm] = useState(() => () => {});
 
-  /* fetch the “basis summary info” once */
+  // confirm modal helpers passed down via NodeTable
+  const openConfirmModal = (title, body, confirmFn) => {
+    setModalTitle(title);
+    setModalBody(body);
+    setOnConfirm(() => confirmFn);
+    setModalOpen(true);
+  };
+
   useEffect(() => {
     fetch(`http://localhost:8000/api/groupnode/${pk}`)
-      .then(r => r.json())
-      .then(setSummary)
-      .catch(() => toast.error('Failed to load group'));
+    .then(async (r) => {
+      if (!r.ok) {
+        const errorText = await r.text();
+        throw new Error(`HTTP ${r.status} - ${errorText}`);
+      }
+      return r.json();
+    })
+    .then(setSummary)
+    .catch((err) => {
+      console.error('Error loading group:', err);
+      toast.error(`Failed to load group: ${err.message}`);
+    });
   }, [pk]);
 
-  /* endpoint for the member table */
   const endpointBase = useMemo(
     () => `http://localhost:8000/api/groupnode/${pk}/members`,
     [pk]
@@ -60,33 +102,41 @@ export default function GroupNodeDetail() {
 
   return (
     <div className="space-y-6 p-4">
-      {/* ----- summary card ----- */}
       <Card>
-      <h3 style={{ marginBottom: '10px' }}>{`Group ${pk}`}</h3>
-  <CardContent>
-    {!summary ? (
-      <Skeleton variant="rectangular" height={96} width="100%" />
-    ) : (
-      <div>
-        <div><b>Label:</b> {summary.label}</div>
-        <div><b>Type string:</b> {summary.type_string}</div>
-        <div><b>Nodes:</b> {summary.count}</div>
-        <div><b>Description:</b> {summary.description || <em>–</em>}</div>
-        </div>
-    )}
-  </CardContent>
-</Card>
+        <h3 style={{ marginBottom: 10 }}>{`Group ${pk}`}</h3>
+        <CardContent>
+          {!summary ? (
+            <Skeleton variant="rectangular" height={96} width="100%" />
+          ) : (
+            <div>
+              <div><b>Label:</b> {summary.label}</div>
+              <div><b>Type string:</b> {summary.type_string}</div>
+              <div><b>Nodes:</b> {summary.count}</div>
+              <div><b>Description:</b> {summary.description || <em>–</em>}</div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* ----- member table ----- */}
       <NodeTable
         title=""
-        endpointBase={endpointBase}       /* calls …/members-data & friends */
-        linkPrefix="/datanode"           /* click through to the underlying node */
+        endpointBase={endpointBase}
+        actionBase={endpointBase}
         config={{
-          columns       : memberColumns,
-          buildActions  : memberActions,  // or: () => null
-          editableFields: editableFields,
+          columns: memberColumns,
+          buildExtraActions: memberActions,
+          editableFields,
+          includeDeleteButton: false,
         }}
+        openConfirmModal={openConfirmModal}
+        modalOpen={modalOpen}
+        modalTitle={modalTitle}
+        modalBody={modalBody}
+        onModalConfirm={() => {
+          onConfirm();
+          setModalOpen(false);
+        }}
+        onModalClose={() => setModalOpen(false)}
       />
     </div>
   );
