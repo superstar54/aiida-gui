@@ -9,12 +9,7 @@ from aiida_workgraph_web_ui.backend.app.node_table import (
     projected_data_to_dict_process,
 )
 from aiida_workgraph.orm.workgraph import WorkGraphNode
-from .utils import (
-    get_node_summary,
-    get_node_inputs,
-    get_node_outputs,
-    get_parent_processes,
-)
+from .utils import get_node_summary, get_parent_processes
 
 
 router = make_node_router(
@@ -106,11 +101,7 @@ async def read_workgraph(id: int):
         if content is None:
             print("No workgraph data found in the node.")
             return
-        summary = {
-            "table": get_node_summary(node),
-            "inputs": get_node_inputs(id),
-            "outputs": get_node_outputs(id),
-        }
+        summary = get_node_summary(node)
 
         parent_workgraphs = get_parent_processes(id)
         parent_workgraphs.reverse()

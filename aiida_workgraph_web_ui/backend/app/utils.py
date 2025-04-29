@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Dict, Optional, Union, Tuple, List, Any
 from aiida.orm import load_node, Node
 from datetime import datetime
@@ -32,17 +34,17 @@ def get_node_recursive(links: Dict) -> Dict[str, Union[List[int], str]]:
         if isinstance(value, Mapping):
             data.update({label: get_node_recursive(value)})
         else:
-            data[label] = [value.pk, value.__class__.__name__]
+            data[label] = [value.pk, value.__class__.__name__, value.node_type]
     return data
 
 
-def get_node_inputs(pk: Optional[int]) -> Union[str, Dict[str, Union[List[int], str]]]:
+def get_node_inputs(pk: int | Node) -> Union[str, Dict[str, Union[List[int], str]]]:
     from aiida.common.links import LinkType
 
     if pk is None:
         return {}
 
-    node = load_node(pk)
+    node = load_node(pk) if isinstance(pk, int) else pk
     nodes_input = node.base.links.get_incoming(
         link_type=(LinkType.INPUT_CALC, LinkType.INPUT_WORK)
     )
@@ -54,13 +56,47 @@ def get_node_inputs(pk: Optional[int]) -> Union[str, Dict[str, Union[List[int], 
     return result
 
 
-def get_node_outputs(pk: Optional[int]) -> Union[str, Dict[str, Union[List[int], str]]]:
+def get_nodes_called(pk: int | Node) -> Union[str, Dict[str, Union[List[int], str]]]:
+    from aiida.common.links import LinkType
+
+    node = load_node(pk) if isinstance(pk, int) else pk
+    links_called = node.base.links.get_outgoing(
+        link_type=(LinkType.CALL_CALC, LinkType.CALL_WORK)
+    )
+    nodes_called = {}
+    for link in links_called:
+        nodes_called[link.link_label] = [
+            link.node.pk,
+            link.node.__class__.__name__,
+            link.node.node_type,
+        ]
+    return nodes_called
+
+
+def get_nodes_caller(pk: int | Node) -> Union[str, Dict[str, Union[List[int], str]]]:
+    from aiida.common.links import LinkType
+
+    node = load_node(pk) if isinstance(pk, int) else pk
+    links_caller = node.base.links.get_incoming(
+        link_type=(LinkType.CALL_CALC, LinkType.CALL_WORK)
+    )
+    nodes_caller = {}
+    for link in links_caller:
+        nodes_caller[link.link_label] = [
+            link.node.pk,
+            link.node.__class__.__name__,
+            link.node.node_type,
+        ]
+    return nodes_caller
+
+
+def get_node_outputs(pk: int | Node) -> Union[str, Dict[str, Union[List[int], str]]]:
     from aiida.common.links import LinkType
 
     if pk is None:
         return ""
 
-    node = load_node(pk)
+    node = load_node(pk) if isinstance(pk, int) else pk
     result = ""
     nodes_output = node.base.links.get_outgoing(
         link_type=(LinkType.CREATE, LinkType.RETURN)
@@ -110,7 +146,7 @@ def get_workchain_data(node: Node) -> dict:
         )
         for link in links_input:
             input_node_links_create = link.node.base.links.get_incoming(
-                link_type=(LinkType.CREATE)
+                link_type=(LinkType.CREATE, LinkType.RETURN)
             )
             for link_create in input_node_links_create:
                 if link_create.node in nodes_called:
@@ -164,11 +200,24 @@ def node_to_short_json(workgraph_pk: int, tdata: Dict[str, Any]) -> Dict[str, An
 
 
 def get_node_summary(node: Node) -> List[List[str]]:
+    summary = {
+        "table": get_node_summary_table(node),
+        "inputs": get_node_inputs(node),
+        "outputs": get_node_outputs(node),
+        "called": get_nodes_called(node),
+        "caller": get_nodes_caller(node),
+    }
+    return summary
+
+
+def get_node_summary_table(pk: int | Node) -> List[List[str]]:
     """ """
     from plumpy import ProcessState
     from aiida.orm import ProcessNode
 
     table = []
+
+    node = load_node(pk) if isinstance(pk, int) else pk
 
     if isinstance(node, ProcessNode):
         table.append(["type", node.process_label])

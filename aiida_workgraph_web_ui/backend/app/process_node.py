@@ -6,7 +6,7 @@ from aiida_workgraph_web_ui.backend.app.node_table import (
 import traceback
 from fastapi import HTTPException
 from aiida import orm
-from .utils import get_node_summary, get_node_inputs, get_node_outputs
+from .utils import get_node_summary
 
 router = make_node_router(
     node_cls=orm.ProcessNode,
@@ -23,12 +23,7 @@ async def read_process(id: int):
     except Exception:
         raise HTTPException(status_code=404, detail=f"Process {id} not found")
 
-    data = {
-        "table": get_node_summary(node),
-        "inputs": get_node_inputs(id),
-        "outputs": get_node_outputs(id),
-    }
-    print(data)
+    data = get_node_summary(node)
     return data
 
 
