@@ -1,4 +1,4 @@
-from .utils import get_node_summary, get_node_inputs, get_node_outputs
+from .utils import get_node_summary_table, get_node_inputs, get_node_outputs
 from aiida.orm.utils.serialize import deserialize_unsafe
 from aiida import orm
 from fastapi import APIRouter, HTTPException
@@ -49,13 +49,13 @@ async def read_task(id: int, path: str):
                                 break
                     content = node_to_short_json(id, ndata)
         elif isinstance(node, orm.WorkChainNode):
-            pk = segments[0].split("-")[-1]
+            pk = int(segments[0].split("-")[-1])
             try:
                 task_node = orm.load_node(pk)
             except Exception:
                 raise HTTPException(status_code=404, detail=f"Process {pk} not found")
 
-            # metadata = get_node_summary(node),
+            # metadata = get_node_summary_table(node),
             # metadata["name"] = segments[0].split("_")[0]
             # metadata["node_type"] = node.node_type
             # metadata["identifier"] = "any"
@@ -68,9 +68,9 @@ async def read_task(id: int, path: str):
             content = {
                 "node_type": task_node.node_type,
                 "label": segments[0].split("_")[0],
-                "metadata": get_node_summary(task_node),
-                "inputs": get_node_inputs(pk),
-                "outputs": get_node_outputs(pk),
+                "metadata": get_node_summary_table(task_node),
+                "inputs": get_node_inputs(task_node),
+                "outputs": get_node_outputs(task_node),
                 "executor": executor,
                 "process": {"pk": pk},
             }
