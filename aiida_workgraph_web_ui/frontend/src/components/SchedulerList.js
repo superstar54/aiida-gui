@@ -1,8 +1,9 @@
-// SchedulerList.js
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { DataGrid } from '@mui/x-data-grid';
+import { Button, Box } from '@mui/material';
 
 // A simple modal component for "Add Scheduler"
 function AddSchedulerModal({ show, onClose, onAdd }) {
@@ -116,14 +117,13 @@ function SchedulerList() {
     navigate(`/scheduler/${schedulerName}`);
   };
 
-  const handleStart = (name, maxCalcjobs, maxProcesses) => {
+  const handleStart = (name) => {
     fetch('http://localhost:8000/api/scheduler/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
-        max_calcjobs: maxCalcjobs || undefined,
-        max_processes: maxProcesses || undefined,
+        // max_calcjobs and max_processes can be omitted or sent as their current values if available
         foreground: false,
       }),
     })
@@ -213,6 +213,96 @@ function SchedulerList() {
       .catch(error => toast.error(error.message));
   };
 
+  // Define columns for DataGrid
+  const columns = [
+    {
+      field: 'name',
+      headerName: 'Name',
+      width: 150,
+      renderCell: (params) => (
+        <span
+          style={{ cursor: 'pointer', textDecoration: 'underline' }}
+          onClick={() => handleRowClick(params.value)}
+        >
+          {params.value}
+        </span>
+      ),
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      width: 120,
+      renderCell: (params) => (
+        <span style={{ color: params.row.running ? 'green' : 'red' }}>
+          {params.row.running ? 'Running' : 'Stopped'}
+        </span>
+      ),
+    },
+    { field: 'waiting_process_count', headerName: 'Waiting Processes', width: 150 },
+    {
+      field: 'running_processes',
+      headerName: 'Running Processes',
+      width: 150,
+      valueGetter: (value, row) => {
+        return `${row.running_process_count}/${row.max_processes ?? 0}`;
+      },
+    },
+    {
+      field: 'running_calcjobs',
+      headerName: 'Running Calcjobs',
+      width: 150,
+      valueGetter: (value, row) => {
+        return `${row.running_calcjob_count}/${row.max_calcjobs ?? 0}`;
+      },
+    },
+    {
+      field: 'running_workflows',
+      headerName: 'Running Workflows',
+      width: 150,
+      valueGetter: (value, row) => {
+        return `${row.running_workflow_count}/${row.max_workflows ?? 0}`;
+      },
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      width: 200,
+      renderCell: (params) => (
+        <Box>
+          {params.row.running ? (
+            <Button
+              variant="contained"
+              color="error"
+              size="small"
+              onClick={() => handleStop(params.row.name)}
+              sx={{ mr: 1 }}
+            >
+              Stop
+            </Button>
+          ) : (
+            <Button
+              variant="contained"
+              color="success"
+              size="small"
+              onClick={() => handleStart(params.row.name)}
+              sx={{ mr: 1 }}
+            >
+              Start
+            </Button>
+          )}
+          <Button
+            variant="outlined"
+            color="secondary"
+            size="small"
+            onClick={() => handleDelete(params.row.name)}
+          >
+            Delete
+          </Button>
+        </Box>
+      ),
+    },
+  ];
+
   return (
     <div>
       <ToastContainer />
@@ -225,79 +315,35 @@ function SchedulerList() {
 
       <h2>Scheduler List</h2>
 
-      <div style={{ marginBottom: '15px' }}>
-        <button
-          style={buttonStylePrimary}
+      <Box sx={{ marginBottom: '15px' }}>
+        <Button
+          variant="contained"
           onClick={() => setShowAddModal(true)}
         >
           + Add Scheduler
-        </button>
-      </div>
+        </Button>
+      </Box>
 
-      <table className="table" style={{ borderCollapse: 'collapse', width: '100%' }}>
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Status</th>
-            <th>Waiting Processes</th>
-            <th>Running Processes</th>
-            <th>Running Calcjobs</th>
-            <th>Running Workflows</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          {schedulers.map(scheduler => (
-            <tr key={scheduler.pk}>
-              <td
-                style={{ cursor: 'pointer', textDecoration: 'underline' }}
-                onClick={() => handleRowClick(scheduler.name)}
-              >
-                {scheduler.name}
-              </td>
-              <td style={{ color: scheduler.running ? 'green' : 'red' }}>
-                {scheduler.running ? 'Running' : 'Stopped'}
-              </td>
-              <td>{scheduler.waiting_process_count}</td>
-              <td>{`${scheduler.running_process_count}/${scheduler.max_processes ?? 0}`}</td>
-              <td>{`${scheduler.running_calcjob_count}/${scheduler.max_calcjobs ?? 0}`}</td>
-              <td>{`${scheduler.running_workflow_count}/${scheduler.max_workflows ?? 0}`}</td>
-              <td>
-                {scheduler.running ? (
-                  <button
-                    onClick={() => handleStop(scheduler.name)}
-                    style={buttonStyleDanger}
-                  >
-                    Stop
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleStart(scheduler.name)}
-                    style={buttonStyleSuccess}
-                  >
-                    Start
-                  </button>
-                )}
-                <button
-                  onClick={() => handleDelete(scheduler.name)}
-                  style={buttonStyleSecondary}
-                >
-                  Delete
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Box sx={{ height: 400, width: '100%' }}>
+        <DataGrid
+          rows={schedulers}
+          columns={columns}
+          getRowId={(row) => row.name} // Use a unique identifier for each row, 'name' seems appropriate here
+          pageSizeOptions={[5, 10, 20]} // Options for rows per page
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 5 },
+            },
+          }}
+          disableRowSelectionOnClick
+        />
+      </Box>
     </div>
   );
 }
 
-/**
- * Some inline styling for demonstration.
- */
 
-// Basic reusable styles
+// Basic reusable styles - kept for modal, but DataGrid uses MUI styling
 const buttonBase = {
   padding: '6px 10px',
   marginRight: '6px',
@@ -315,16 +361,6 @@ const buttonStylePrimary = {
 const buttonStyleSecondary = {
   ...buttonBase,
   backgroundColor: '#6c757d',
-};
-
-const buttonStyleSuccess = {
-  ...buttonBase,
-  backgroundColor: '#28a745', // green
-};
-
-const buttonStyleDanger = {
-  ...buttonBase,
-  backgroundColor: '#dc3545', // red
 };
 
 // Styles for the "Add Scheduler" modal
