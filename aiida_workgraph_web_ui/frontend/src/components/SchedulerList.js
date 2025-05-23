@@ -7,8 +7,9 @@ import 'react-toastify/dist/ReactToastify.css';
 // A simple modal component for "Add Scheduler"
 function AddSchedulerModal({ show, onClose, onAdd }) {
   const [name, setName] = useState('');
-  const [maxCalcjobs, setMaxCalcjobs] = useState('');
-  const [maxProcesses, setMaxProcesses] = useState('');
+  const [maxCalcjobs, setMaxCalcjobs] = useState(10);
+  const [maxWorkflows, setMaxWorkflows] = useState(10);
+  const [maxProcesses, setMaxProcesses] = useState(100);
 
   if (!show) {
     return null; // If not visible, render nothing
@@ -23,7 +24,8 @@ function AddSchedulerModal({ show, onClose, onAdd }) {
     onAdd({
       name: name.trim(),
       max_calcjobs: parseInt(maxCalcjobs, 10) || undefined,
-      max_processes: parseInt(maxProcesses, 10) || undefined,
+      max_workflows: parseInt(maxWorkflows, 10) || undefined,
+      max_processes: parseInt(maxProcesses, 30) || undefined,
     });
   };
 
@@ -48,6 +50,16 @@ function AddSchedulerModal({ show, onClose, onAdd }) {
             type="number"
             value={maxCalcjobs}
             onChange={e => setMaxCalcjobs(e.target.value)}
+            style={{ width: '100px' }}
+          />
+        </div>
+
+        <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center' }}>
+          <label style={{ width: '120px' }}>Max Workflows:</label>
+          <input
+            type="number"
+            value={maxWorkflows}
+            onChange={e => setMaxWorkflows(e.target.value)}
             style={{ width: '100px' }}
           />
         </div>
