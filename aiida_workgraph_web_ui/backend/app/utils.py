@@ -357,3 +357,19 @@ def get_parent_processes(pk: int) -> List[Dict[str, Union[str, int]]]:
     if len(links) > 0:
         parent_processes.extend(get_parent_processes(links[0].node.pk))
     return parent_processes
+
+
+def get_plugins():
+    import importlib.metadata
+
+    plugins = {}
+    # Discover & mount installed plugins
+    for entry in importlib.metadata.entry_points().get("aiida_gui.plugins", []):
+        plugin_name = entry.name
+        try:
+            plugin_module = entry.load()
+            plugins[plugin_name] = plugin_module
+        except Exception as e:
+            print(f"Failed to load plugin {plugin_name}: {e}")
+            continue
+    return plugins

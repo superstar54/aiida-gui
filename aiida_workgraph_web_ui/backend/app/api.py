@@ -1,12 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from aiida.manage import manager
-from aiida_workgraph_web_ui.backend.app.workgraph import router as workgraph_router
 from aiida_workgraph_web_ui.backend.app.workchain import router as workchain_router
 from aiida_workgraph_web_ui.backend.app.task import router as task_router
 from aiida_workgraph_web_ui.backend.app.process_node import router as process_router
 from aiida_workgraph_web_ui.backend.app.daemon import router as daemon_router
-from aiida_workgraph_web_ui.backend.app.scheduler import router as scheduler_router
 from aiida_workgraph_web_ui.backend.app.data_node import router as datanode_router
 from aiida_workgraph_web_ui.backend.app.group_node import router as groupnode_router
 from fastapi.staticfiles import StaticFiles
@@ -18,6 +16,7 @@ from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from pydantic_settings import BaseSettings
+from .utils import get_plugins
 
 
 class BackendSettings(BaseSettings):
@@ -49,14 +48,41 @@ async def read_root() -> dict:
     return {"message": "Welcome to AiiDA-WorkGraph."}
 
 
-app.include_router(workgraph_router)
+@app.get("/plugins")
+async def list_plugins():
+    plugins = get_plugins()
+    print(f"Found plugins: {plugins.keys()}")
+    plugin_names = [plugin_name for plugin_name in plugins.keys()]
+    return {"plugins": plugin_names}
+
+
+def mount_plugins():
+    plugins = get_plugins()
+    for plugin_name, plugin_module in plugins.items():
+        print(f"Mounting plugin: {plugin_name}")
+        router = plugin_module["router"]
+        static_dir = plugin_module["static_dir"]
+        if router is None or static_dir is None:
+            continue
+
+        # 1) Plugin API mounted at /plugins/{plugin_name}/api
+        app.include_router(router, prefix=f"/plugins/{plugin_name}")
+
+        # 2) Serve plugin static ESM at /plugins/{plugin_name}/static
+        app.mount(
+            f"/plugins/{plugin_name}/static",
+            StaticFiles(directory=static_dir, html=True),
+            name=f"plugin_{plugin_name}",
+        )
+
+
 app.include_router(workchain_router)
 app.include_router(task_router)
 app.include_router(process_router)
 app.include_router(datanode_router)
 app.include_router(groupnode_router)
 app.include_router(daemon_router)
-app.include_router(scheduler_router)
+mount_plugins()
 
 
 @app.get("/debug")
@@ -98,3 +124,16 @@ if os.path.isdir(build_dir):
         StaticFiles(directory=build_dir / "static"),
         name="React app static files",
     )
+
+    @app.get("/react-shim.js", include_in_schema=False)
+    async def react_shim():
+        path = build_dir / "react-shim.js"
+        if not path.is_file():
+            raise StarletteHTTPException(status_code=404, detail="shim missing")
+        return FileResponse(path, media_type="application/javascript")
+
+    @app.get("/react-jsx-runtime-shim.js", include_in_schema=False)
+    async def react_jsx_runtime_shim():
+        return FileResponse(
+            build_dir / "react-jsx-runtime-shim.js", media_type="application/javascript"
+        )

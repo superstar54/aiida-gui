@@ -2,10 +2,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faHome, faProjectDiagram, faCogs, faDatabase, faLayerGroup, faRobot, faClock } from '@fortawesome/free-solid-svg-icons';
+import { faHome, faProjectDiagram, faCogs, faDatabase, faLayerGroup, faRobot, faClock, faPlug } from '@fortawesome/free-solid-svg-icons';
 import './Layout.css'; // Import layout-specific styles
 
-const Layout = ({ children }) => {
+const Layout = ({ children, pluginNames = [] }) => {
   return (
     <div className="App">
       <div className="sidebar">
@@ -18,6 +18,25 @@ const Layout = ({ children }) => {
           <li><Link to="/groupnode"><FontAwesomeIcon icon={faLayerGroup} /><span>Group</span></Link></li>
           <li><Link to="/daemon"><FontAwesomeIcon icon={faRobot} /><span>Daemon</span></Link></li>
           <li><Link to="/scheduler"><FontAwesomeIcon icon={faClock} /><span>Scheduler</span></Link></li>
+          {/* --- Plugins Section --- */}
+          {pluginNames.length > 0 && (
+            <>
+              <li className="sidebar-section-header">
+                <FontAwesomeIcon icon={faPlug} />
+                <span>Plugins</span>
+              </li>
+              {pluginNames.map((name) => (
+                <li key={name}>
+                  <Link to={`/${name}`}>
+                    <FontAwesomeIcon icon={faPlug} />
+                    <span style={{ textTransform: 'capitalize' }}>
+                      {name}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </>
+           )}
           </ul>
         </nav>
       </div>
