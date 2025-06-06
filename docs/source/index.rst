@@ -1,12 +1,12 @@
 
-Welcome to AiiDA Workgraph Web UI's documentation!
+Welcome to AiiDA GUI's documentation!
 ====================================================
-The AiiDA Workgraph Web UI is a web interface for viewing and managing the workgraphs of AiiDA workflows. It provides a user-friendly interface for viewing the workgraphs, the details of the workgraphs, the logs of the jobs, the timeline of the execution, and the text summary of the workgraphs.
+The AiiDA GUI is a web interface for viewing and managing the AiiDA workflows.
 
 
 .. note::
 
-   If you encounter any problems, please update the widget to the latest version. If the problem persists, please report it on the `GitHub issue <https://github.com/aiidateam/aiida-workgraph-web-ui/issues>`_
+   If you encounter any problems, please update the widget to the latest version. If the problem persists, please report it on the `GitHub issue <https://github.com/aiidateam/aiida-gui/issues>`_
 
 
 .. toctree::
@@ -14,7 +14,7 @@ The AiiDA Workgraph Web UI is a web interface for viewing and managing the workg
    :caption: Contents:
 
    installation
-   web
+   quick_start
 
 
 
