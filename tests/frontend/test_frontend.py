@@ -9,12 +9,11 @@ def test_homepage(web_server, page):
     assert page.title() == "AiiDA GUI"
 
     # Check if at least one of the links to Process is visible
-    elements = page.locator("a[href='/process']")
+    process_link_locator = page.locator("a[href='/process']")
 
-    assert elements.count() > 0, "No elements matching 'a[href='/process']' found"
-
-    if not elements.first.is_visible():
-        pytest.fail("None of the 'a[href='/process']' elements are visible on the page")
+    expect(process_link_locator.first).to_be_visible(
+        timeout=10000
+    )  # Optional: increase timeout if needed
 
 
 @pytest.mark.frontend
@@ -26,10 +25,14 @@ def test_process(web_server, page, ran_workchain):
     assert page.get_by_role("heading", name="Process").is_visible()
 
     # Check for Table Headers in DataGrid
-    assert page.get_by_role("columnheader", name="PK").is_visible()
-    assert page.get_by_role("columnheader", name="Created").is_visible()
-    assert page.get_by_role("columnheader", name="Process label").is_visible()
-    assert page.get_by_role("columnheader", name="State").is_visible()
+    expect(page.get_by_role("columnheader", name="PK")).to_be_visible(timeout=10000)
+    expect(page.get_by_role("columnheader", name="Created")).to_be_visible(
+        timeout=10000
+    )
+    expect(page.get_by_role("columnheader", name="Process label")).to_be_visible(
+        timeout=10000
+    )
+    expect(page.get_by_role("columnheader", name="State")).to_be_visible(timeout=10000)
     # I don't know why the Actions column is not visible
     # assert page.get_by_role("columnheader", name="Actions").is_visible()
 
@@ -116,9 +119,11 @@ def test_process_item(web_server, page, ran_workchain):
 def test_datanode_item(web_server, page, ran_workchain):
     page.goto("http://localhost:8000/datanode/")
     # Check for Table Headers in DataGrid
-    assert page.get_by_role("columnheader", name="PK").is_visible()
-    assert page.get_by_role("columnheader", name="Created").is_visible()
-    assert page.get_by_role("columnheader", name="Label").is_visible()
+    expect(page.get_by_role("columnheader", name="PK")).to_be_visible(timeout=10000)
+    expect(page.get_by_role("columnheader", name="Created")).to_be_visible(
+        timeout=10000
+    )
+    expect(page.get_by_role("columnheader", name="Label")).to_be_visible(timeout=10000)
 
     data_node_pk = ran_workchain.called_descendants[0].inputs.x.pk
 

@@ -137,3 +137,6 @@ tests/work
 /tests/**/*txt
 /tests/**/*html
 .vscode
+
+
+/aiida_gui/static/

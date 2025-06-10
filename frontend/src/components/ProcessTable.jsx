@@ -18,6 +18,8 @@ export const processColumns = linkPrefix => ([
         prefix = '/workchain';
       } else if (typeKey.endsWith('workfunctionnode.')) {
         prefix = '/workchain';
+      } else if (typeKey.endsWith('workgraphnode.')) {
+        prefix = '/workgraph';
       }
 
       return <Link to={`${prefix}/${value}`}>{value}</Link>;

@@ -1,8 +1,8 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, Typography, Button, Grid, Box } from '@mui/material';
 
-function Home() {
+function Home({ homeItems = {} }) {
+  console.log("homeItems:", homeItems);
   return (
     <Box sx={{ padding: '2rem' }}>
       <Typography variant="h3" gutterBottom>
@@ -32,6 +32,18 @@ function Home() {
               <Button component={Link} to="/daemon" variant="contained" color="primary" sx={{ margin: '0.5rem', textTransform: 'none' }}>
                 Daemon
               </Button>
+              {Object.entries(homeItems).map(([name, item]) => (
+                <Button
+                  key={name}
+                  component={Link}
+                  to={item.path}
+                  variant="contained"
+                  color="primary"
+                  sx={{ margin: '0.5rem', textTransform: 'none' }}
+                >
+                  {item.label}
+                </Button>
+              ))}
             </CardContent>
           </Card>
         </Grid>

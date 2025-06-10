@@ -4,7 +4,7 @@ import '../App.css';
 import '../rete.css';
 import { createEditor, addControls, removeControls } from '../rete/default';
 import { Button, Switch } from "antd";
-import WorkGraphIndicator from './ProcessIndicator'; // Import the WorkGraphIndicator component
+import ProcessBreadcrumbs from './ProcessIndicator'; // Import the ProcessBreadcrumbs component
 import ProcessSummary from './ProcessSummary';
 import ProcessLog from './ProcessLog';
 import TaskDetails from './TaskDetails';
@@ -29,7 +29,7 @@ declare global {
 
 
 
-/* Modify the useRete function to support passing workgraph data to createEditor */
+/* Modify the useRete function to support passing workflow data to createEditor */
 export function useRete<T extends { destroy(): void }>(
   create: (el: HTMLElement, data: any) => Promise<T>,
   workchainData: any
@@ -72,7 +72,7 @@ export function useRete<T extends { destroy(): void }>(
 
 
 
-function WorkChain() {
+function WorkflowItem({endPoint = 'workchain'}) {
   const { pk } = useParams();
   const location = useLocation();
 
@@ -99,7 +99,7 @@ function WorkChain() {
   // Fetch state data from the backend
   const fetchStateData = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/workchain-state/${pk}`);
+      const response = await fetch(`${endPoint}-state/${pk}`);
       if (!response.ok) {
         throw new Error('Failed to fetch state data');
       }
@@ -185,19 +185,18 @@ function WorkChain() {
   }, [detailNodeViewSwitch]); // Depend on the realtimeSwitch, pk, and editor
 
 
-  // Fetch workgraph data from the API
   useEffect(() => {
     let url;
     if (subPath) {
-      url = `http://localhost:8000/api/workchain/${pk}/${subPath}`;
+      url = `${endPoint}/${pk}/${subPath}`;
     } else {
-      url = `http://localhost:8000/api/workchain/${pk}`;
+      url = `${endPoint}/${pk}`;
     }
+    console.log('Fetching workchain data from:', url);
     fetch(url)
       .then((response) => response.json())
       .then((data) => {
         setWorkChainData(data);
-        // Set the workgraph hierarchy here based on your data
         setWorkChainHierarchy(data.parent_workchains);
       })
       .catch((error) => console.error('Error fetching data:', error));
@@ -314,7 +313,7 @@ function WorkChain() {
           {selectedView === 'Log' && <ProcessLog id={pk} />}
           {selectedView === 'Time' && <NodeDurationGraph id={pk}/>}
           <EditorWrapper visible={selectedView === 'Editor'}>
-          <WorkGraphIndicator parentProcesses={workchainHierarchy} />
+          <ProcessBreadcrumbs parentProcesses={workchainHierarchy} />
             <EditorContainer>
               <LayoutAction>
               <div style={{ display: 'flex', alignItems: 'center' }}>
@@ -357,4 +356,4 @@ function WorkChain() {
   );
 }
 
-export default WorkChain;
+export default WorkflowItem;

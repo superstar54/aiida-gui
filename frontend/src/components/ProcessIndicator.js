@@ -27,7 +27,7 @@ const Separator = styled.span`
   color: #ccc;
 `;
 
-function Breadcrumbs({ parentProcesses }) {
+function ProcessBreadcrumbs({ parentProcesses }) {
   // If empty or undefined, show nothing
   if (!parentProcesses || parentProcesses.length === 0) {
     return null;
@@ -79,4 +79,4 @@ function Breadcrumbs({ parentProcesses }) {
   );
 }
 
-export default Breadcrumbs;
+export default ProcessBreadcrumbs;
