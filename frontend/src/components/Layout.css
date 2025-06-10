@@ -48,6 +48,7 @@
   margin-left: 50px; /* Match the initial width of the sidebar */
   padding: 20px;
   transition: margin-left 0.3s;
+  overflow-x: auto;  /* allow horizontal scroll on very wide tables */
 }
 
 .sidebar:hover ~ .content {
