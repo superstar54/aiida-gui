@@ -60,7 +60,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "CI=false && react-scripts build",
+    "build": "CI=false && react-scripts build && mkdir -p ../aiida_gui/static && rm -rf ../aiida_gui/static/* && cp -r build/* ../aiida_gui/static/",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -16,6 +16,7 @@ from fastapi.exception_handlers import http_exception_handler
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from pydantic_settings import BaseSettings
+from aiida_gui.app.plugin import get_plugins, mount_plugins
 
 
 class BackendSettings(BaseSettings):
@@ -47,12 +48,21 @@ async def read_root() -> dict:
     return {"message": "Welcome to AiiDA."}
 
 
+@app.get("/plugins")
+async def list_plugins():
+    plugins = get_plugins()
+    print(f"Found plugins: {plugins.keys()}")
+    plugin_names = [plugin_name for plugin_name in plugins.keys()]
+    return {"plugins": plugin_names}
+
+
 app.include_router(workchain_router)
 app.include_router(task_router)
 app.include_router(process_router)
 app.include_router(datanode_router)
 app.include_router(groupnode_router)
 app.include_router(daemon_router)
+mount_plugins(app)
 
 
 @app.get("/debug")
@@ -76,7 +86,7 @@ a request to the FastAPI server for /settings. Since this route isn't defined in
 so we use the index.html serve all routes except API specific ones, then load all static assets.
 """
 backend_dir = Path(__file__).parent
-build_dir = backend_dir / "../../frontend/build/"
+build_dir = backend_dir / "../static"
 build_dir = os.getenv("REACT_BUILD_DIR", build_dir)
 
 
@@ -94,3 +104,30 @@ if os.path.isdir(build_dir):
         StaticFiles(directory=build_dir / "static"),
         name="React app static files",
     )
+
+    @app.get("/react-shim.js", include_in_schema=False)
+    async def react_shim():
+        path = build_dir / "react-shim.js"
+        if not path.is_file():
+            raise StarletteHTTPException(status_code=404, detail="shim missing")
+        return FileResponse(path, media_type="application/javascript")
+
+    @app.get("/react-jsx-runtime-shim.js", include_in_schema=False)
+    async def react_jsx_runtime_shim():
+        return FileResponse(
+            build_dir / "react-jsx-runtime-shim.js", media_type="application/javascript"
+        )
+
+    @app.get("/react-router-dom-shim.js", include_in_schema=False)
+    async def react_router_dom_shim():
+        path = build_dir / "react-router-dom-shim.js"
+        if not path.is_file():
+            raise StarletteHTTPException(status_code=404, detail="shim missing")
+        return FileResponse(path, media_type="application/javascript")
+
+    @app.get("/use-sync-external-store-shim.js", include_in_schema=False)
+    async def use_sync_external_store_shim():
+        path = build_dir / "use-sync-external-store-shim.js"
+        if not path.is_file():
+            raise StarletteHTTPException(status_code=404, detail="shim missing")
+        return FileResponse(path, media_type="application/javascript")

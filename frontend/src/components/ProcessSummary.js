@@ -3,7 +3,7 @@ import styled from "styled-components";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism'; // Correct import for 'dark' style
 
-export const WorkGraphInfoStyle = styled.div`
+export const WorkFlowInfoStyle = styled.div`
   width: 50%;
   padding: 1em;
   overflow-y: auto;
@@ -107,7 +107,7 @@ function ProcessSummary({ summary }) {
   };
 
   return (
-    <WorkGraphInfoStyle>
+    <WorkFlowInfoStyle>
     <div>
       <h2>Summary</h2>
       <div className="info-table">
@@ -151,7 +151,7 @@ function ProcessSummary({ summary }) {
         </ul>
       </TaskDetailsTable>
     </div>
-    </WorkGraphInfoStyle>
+    </WorkFlowInfoStyle>
   );
 }
 

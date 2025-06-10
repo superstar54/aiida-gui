@@ -4,7 +4,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { dark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { useNavigate } from 'react-router-dom';
 
-const WorkGraphButton = styled.button`
+const WorkFlowButton = styled.button`
   padding: 10px;
   background-color: #007bff;
   color: #fff;
@@ -127,7 +127,7 @@ function TaskDetails({
   /**
    * Main click handler for the "Go to WorkGraph" button
    */
-  const handleWorkGraphClick = () => {
+  const handleWorkFlowClick = () => {
     if (nodeType === 'GRAPH_BUILDER') {
       // Only valid if we have a processPk
       if (processPk) {
@@ -212,14 +212,14 @@ function TaskDetails({
 
       {/* Show button only if type is GRAPH_BUILDER, WORKGRAPH, or MAP */}
       {['GRAPH_BUILDER', 'WORKGRAPH', 'MAP'].includes(nodeType) && (
-        <WorkGraphButton onClick={handleWorkGraphClick} disabled={isButtonDisabled}>
+        <WorkFlowButton onClick={handleWorkFlowClick} disabled={isButtonDisabled}>
           Go to WorkGraph
-        </WorkGraphButton>
+        </WorkFlowButton>
       )}
       {nodeType.includes('WORKCHAIN') && (
-        <WorkGraphButton onClick={handleWorkGraphClick} disabled={isButtonDisabled}>
+        <WorkFlowButton onClick={handleWorkFlowClick} disabled={isButtonDisabled}>
           Go to WorkChain
-        </WorkGraphButton>
+        </WorkFlowButton>
       )}
 
       {/* Metadata table */}
