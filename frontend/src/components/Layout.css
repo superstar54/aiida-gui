@@ -1,6 +1,4 @@
 
-/* Home page sidebar Menu */
-
 .sidebar {
   width: 50px; /* Initial width */
   height: 100vh;
@@ -45,10 +43,23 @@
 }
 
 .content {
-  margin-left: 50px; /* Match the initial width of the sidebar */
-  padding: 20px;
+  /* leave space for collapsed sidebar */
+  margin-left: 50px;
+  /* when sidebar expands */
   transition: margin-left 0.3s;
-  overflow-x: auto;  /* allow horizontal scroll on very wide tables */
+
+  /* flex setup */
+  display: flex;
+  flex-direction: column;
+  flex: 1;        /* fill remaining width */
+  height: 100%;   /* fill the .App height */
+  min-height: 0;  /* CRUCIAL: allow children to grow vertically */
+  overflow: hidden;
+}
+
+.content > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .sidebar:hover ~ .content {

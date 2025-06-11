@@ -28,7 +28,7 @@ function AppContent({error }) {
   const { homeItems } = usePluginContext();
 
   return (
-    <Layout sideBarItems={sideBarItems}>
+    <Layout>
       {error && (
         <div style={{ color: 'red' }}>
           Error loading plugins: {error.message}
@@ -38,7 +38,7 @@ function AppContent({error }) {
       <Suspense fallback={<div>Loading page…</div>}>
         <Routes>
           {/* Built-in AiiDA GUI routes */}
-          <Route path="/" element={<Home homeItems={homeItems}/>} />
+          <Route path="/" element={<Home/>} />
           <Route path="/process" element={<ProcessTable />} />
           <Route path="/process/:pk/*" element={<ProcessNodeDetail />} />
           <Route path="/daemon" element={<Daemon />} />

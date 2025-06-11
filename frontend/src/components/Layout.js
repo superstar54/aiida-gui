@@ -3,8 +3,12 @@ import { Link } from 'react-router-dom';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faHome, faCogs, faDatabase, faLayerGroup, faRobot, faPlug } from '@fortawesome/free-solid-svg-icons';
 import './Layout.css';
+import { usePluginContext } from '../components/PluginContext';
 
-const Layout = ({ children, sideBarItems = {} }) => {
+
+const Layout = ({ children }) => {
+  const { sideBarItems } = usePluginContext();
+
   return (
     <div className="App">
       <div className="sidebar">

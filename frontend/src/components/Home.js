@@ -1,8 +1,11 @@
 import { Link } from 'react-router-dom';
 import { Card, CardContent, Typography, Button, Grid, Box } from '@mui/material';
+import { usePluginContext } from '../components/PluginContext';
 
-function Home({ homeItems = {} }) {
-  console.log("homeItems:", homeItems);
+
+function Home() {
+  const { homeItems } = usePluginContext();
+
   return (
     <Box sx={{ padding: '2rem' }}>
       <Typography variant="h3" gutterBottom>

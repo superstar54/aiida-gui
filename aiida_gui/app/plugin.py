@@ -1,6 +1,7 @@
 import sys
 import traceback
 from fastapi.staticfiles import StaticFiles
+from starlette.routing import Mount, Route
 
 
 def get_plugins():
@@ -34,16 +35,39 @@ def get_plugins():
 def mount_plugins(app):
     plugins = get_plugins()
     for plugin_name, plugin_module in plugins.items():
-        routers = plugin_module.get("routers")
-        static_dir = plugin_module.get("static_dir")
-        if routers is None or static_dir is None:
-            continue
+        sub_apps = plugin_module.get("sub_apps", {})
+        routers = plugin_module.get("routers", {})
+        static_dirs = plugin_module.get("static_dirs", {})
 
-        for router in routers:
-            app.include_router(router, prefix=f"/plugins/{plugin_name}")
+        for key, sub_app in sub_apps.items():
+            app.mount(
+                f"/plugins/{plugin_name}/{key}", sub_app, name=f"plugin_{plugin_name}"
+            )
 
-        app.mount(
-            f"/plugins/{plugin_name}/static",
-            StaticFiles(directory=static_dir, html=True),
-            name=f"plugin_{plugin_name}",
-        )
+        for key, router in routers.items():
+            app.include_router(router, prefix=f"/plugins/{key}")
+
+        for key, static_dir in static_dirs.items():
+            app.mount(
+                f"/plugins/{key}/static",
+                StaticFiles(directory=static_dir, html=True),
+                name=f"plugin_{key}",
+            )
+
+
+def list_routes_and_statics(app, prefix: str = ""):
+    for route in app.routes:
+        if isinstance(route, Mount) and isinstance(route.app, StaticFiles):
+            print(
+                f"[static] {prefix}{route.path}  → serves from {route.app.directory!r}"
+            )
+        elif isinstance(route, Mount):
+            sub_prefix = prefix + route.path
+            try:
+                # recurse into the sub-app’s routes
+                list_routes_and_statics(route.app, prefix=sub_prefix)
+            except Exception:
+                pass
+        elif isinstance(route, Route):
+            methods = ",".join(route.methods or [])
+            print(f"[route ] {prefix}{route.path}  [{methods}]")
