@@ -37,6 +37,7 @@ export const {
   useDebugValue,
   useDeferredValue,
   useTransition,
+  useInsertionEffect,
   useId,
   useSyncExternalStore,
 

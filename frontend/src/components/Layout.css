@@ -1,6 +1,4 @@
 
-/* Home page sidebar Menu */
-
 .sidebar {
   width: 50px; /* Initial width */
   height: 100vh;
@@ -49,6 +47,11 @@
   padding: 20px;
   transition: margin-left 0.3s;
   overflow-x: auto;  /* allow horizontal scroll on very wide tables */
+}
+
+.content > * {
+  flex: 1;
+  min-height: 0;
 }
 
 .sidebar:hover ~ .content {
