@@ -32,10 +32,10 @@ async def read_workchain(id: int):
             print("No workchain data found in the node.")
             return
         summary = get_node_summary(node)
-        parent_workchains = get_parent_processes(id)
-        parent_workchains.reverse()
+        parent_workflows = get_parent_processes(id)
+        parent_workflows.reverse()
         content["summary"] = summary
-        content["parent_workchains"] = parent_workchains
+        content["parent_workflows"] = parent_workflows
         content["processes_info"] = {}
         return content
     except KeyError as e:

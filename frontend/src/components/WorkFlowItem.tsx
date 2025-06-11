@@ -32,7 +32,7 @@ declare global {
 /* Modify the useRete function to support passing workflow data to createEditor */
 export function useRete<T extends { destroy(): void }>(
   create: (el: HTMLElement, data: any) => Promise<T>,
-  workchainData: any
+  workFlowData: any
 ) {
   const [container, setContainer] = useState<null | HTMLElement>(null);
   const editorRef = useRef<T>();
@@ -45,13 +45,13 @@ export function useRete<T extends { destroy(): void }>(
         editorRef.current.destroy();
         container.innerHTML = '';
       }
-      create(container, workchainData).then((value) => {
+      create(container, workFlowData).then((value) => {
         editorRef.current = value;
         setEditor(value);
         window.editor = value;
       });
     }
-  }, [container, create, workchainData]); // Add workchainData as a dependency
+  }, [container, create, workFlowData]); // Add workFlowData as a dependency
 
   useEffect(() => {
     return () => {
@@ -76,11 +76,11 @@ function WorkflowItem({endPoint = 'workchain'}) {
   const { pk } = useParams();
   const location = useLocation();
 
-  const [workchainData, setWorkChainData] = useState({ summary: {}, nodes: {}, links: [], pk: [] });
-  const [ref, editor] = useRete(createEditor, workchainData);
+  const [workFlowData, setWorkFlowData] = useState({ summary: {}, nodes: {}, links: [], pk: [] });
+  const [ref, editor] = useRete(createEditor, workFlowData);
   const [selectedNode, setSelectedNode] = useState({ metadata: [], executor: '' });
   const [showTaskDetails, setShowTaskDetails] = useState(false);
-  const [workchainHierarchy, setWorkChainHierarchy] = useState([]);
+  const [workFlowHierarchy, setWorkFlowHierarchy] = useState([]);
   const [selectedView, setSelectedView] = useState('Editor');
   const [realtimeSwitch, setRealtimeSwitch] = useState(false); // State to manage the realtime switch
   const [detailNodeViewSwitch, setDetailNodeViewSwitch] = useState(false); // State to manage the realtime switch
@@ -171,11 +171,11 @@ function WorkflowItem({endPoint = 'workchain'}) {
     if (editor) {
       if (detailNodeViewSwitch) {
         console.log('Adding controls');
-        addControls(editor.editor, editor.area, workchainData);
+        addControls(editor.editor, editor.area, workFlowData);
       }
       else {
         console.log('Removing controls');
-        removeControls(editor.editor, editor.area, workchainData);
+        removeControls(editor.editor, editor.area, workFlowData);
       }
       // need to call layout to update the view
       editor?.layout(true);
@@ -192,12 +192,12 @@ function WorkflowItem({endPoint = 'workchain'}) {
     } else {
       url = `${endPoint}/${pk}`;
     }
-    console.log('Fetching workchain data from:', url);
+    console.log('Fetching workflow data from:', url);
     fetch(url)
       .then((response) => response.json())
       .then((data) => {
-        setWorkChainData(data);
-        setWorkChainHierarchy(data.parent_workchains);
+        setWorkFlowData(data);
+        setWorkFlowHierarchy(data.parent_workflows);
       })
       .catch((error) => console.error('Error fetching data:', error));
   }, [pk, subPath]); // Only re-run when `pk` changes
@@ -259,7 +259,7 @@ function WorkflowItem({endPoint = 'workchain'}) {
   // Memoize the editor to prevent re-creation
   const editorComponent = useMemo(() => (
       <div ref={ref} style={{ height: 'calc(100% - 2em)', width: '100%' }}></div>
-  ), [workchainHierarchy, editor, showTaskDetails, selectedNode]); // Specify dependencies
+  ), [workFlowHierarchy, editor, showTaskDetails, selectedNode]); // Specify dependencies
 
 
   const handleTaskAction = async (action: string) => {
@@ -309,11 +309,11 @@ function WorkflowItem({endPoint = 'workchain'}) {
           <Button onClick={() => setSelectedView('Time')}>Time</Button>
         </TopMenu>
           <ToastContainer />
-          {selectedView === 'Summary' && <ProcessSummary summary={workchainData.summary} />}
+          {selectedView === 'Summary' && <ProcessSummary summary={workFlowData.summary} />}
           {selectedView === 'Log' && <ProcessLog id={pk} />}
           {selectedView === 'Time' && <NodeDurationGraph id={pk}/>}
           <EditorWrapper visible={selectedView === 'Editor'}>
-          <ProcessBreadcrumbs parentProcesses={workchainHierarchy} />
+          <ProcessBreadcrumbs parentProcesses={workFlowHierarchy} />
             <EditorContainer>
               <LayoutAction>
               <div style={{ display: 'flex', alignItems: 'center' }}>
