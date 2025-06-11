@@ -15,6 +15,7 @@ The AiiDA GUI is a web interface for viewing and managing the AiiDA workflows.
 
    installation
    quick_start
+   development/index
 
 
 
