@@ -14,7 +14,7 @@ const NodeDurationGraph = ({ id }) => {
 
     const fetchData = async () => {
         try {
-            const response = await fetch(`http://localhost:8000/api/workchain-state/${id}?item_type=${useItemType}`);
+            const response = await fetch(`/api/workchain-state/${id}?item_type=${useItemType}`);
             if (!response.ok) {
                 throw new Error('Network response was not ok');
             }

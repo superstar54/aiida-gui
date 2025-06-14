@@ -91,7 +91,7 @@ export default function GroupNodeDetail() {
   };
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/groupnode/${pk}`)
+    fetch(`/api/groupnode/${pk}`)
     .then(async (r) => {
       if (!r.ok) {
         const errorText = await r.text();
@@ -107,7 +107,7 @@ export default function GroupNodeDetail() {
   }, [pk]);
 
   const endpointBase = useMemo(
-    () => `http://localhost:8000/api/groupnode/${pk}/members`,
+    () => `/api/groupnode/${pk}/members`,
     [pk]
   );
 

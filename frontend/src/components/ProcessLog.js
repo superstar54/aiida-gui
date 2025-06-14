@@ -42,7 +42,7 @@ function ProcessLog({ id }) {
 
   const fetchLogs = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/api/process-logs/${id}`);
+      const response = await fetch(`/api/process-logs/${id}`);
       const data = await response.json();
       setFetchedLogs(data);
     } catch (error) {

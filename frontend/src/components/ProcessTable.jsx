@@ -126,9 +126,9 @@ export function ProcessTable() {
     return (
       <NodeTable
         title="Process nodes"
-        endpointBase="http://localhost:8000/api/process"
+        endpointBase="/api/process"
         linkPrefix="/process"
-        actionBase={`http://localhost:8000/api/process`}
+        actionBase={`/api/process`}
         config={{
           columns       : processColumns,
           buildExtraActions: extraActions,

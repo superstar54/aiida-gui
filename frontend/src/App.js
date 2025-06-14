@@ -42,7 +42,7 @@ function AppContent({error }) {
           <Route path="/process" element={<ProcessTable />} />
           <Route path="/process/:pk/*" element={<ProcessNodeDetail />} />
           <Route path="/daemon" element={<Daemon />} />
-          <Route path="/workchain/:pk/*" element={<WorkFlowItem endPoint="http://localhost:8000/api/workchain" />} />
+          <Route path="/workchain/:pk/*" element={<WorkFlowItem endPoint="/api/workchain" />} />
           <Route path="/datanode" element={<DataNodeTable />} />
           <Route path="/datanode/:pk" element={<DataNodeItem />} />
           <Route path="/groupnode" element={<GroupNodeTable />} />
@@ -74,7 +74,7 @@ export default function App() {
 
   // Fetch installed plugin IDs once
   useEffect(() => {
-    fetch('http://localhost:8000/plugins')
+    fetch('/plugins')
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
