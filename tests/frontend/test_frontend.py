@@ -5,7 +5,7 @@ from playwright.sync_api import expect
 
 @pytest.mark.frontend
 def test_homepage(web_server, page):
-    page.goto("http://localhost:8000")
+    page.goto("")
     assert page.title() == "AiiDA GUI"
 
     # Check if at least one of the links to Process is visible
@@ -18,7 +18,7 @@ def test_homepage(web_server, page):
 
 @pytest.mark.frontend
 def test_process(web_server, page, ran_workchain):
-    page.goto("http://localhost:8000")
+    page.goto("")
     page.click('a[href="/process"]')
 
     # Check for Process Table Header
@@ -49,7 +49,7 @@ def test_process(web_server, page, ran_workchain):
 
 @pytest.mark.frontend
 def test_process_item(web_server, page, ran_workchain):
-    page.goto("http://localhost:8000/process/")
+    page.goto("/process/")
     page.get_by_role("link", name=str(ran_workchain.pk), exact=True).click()
 
     task_name = f"CALL-{ran_workchain.called_descendants[0].pk}"
@@ -117,7 +117,7 @@ def test_process_item(web_server, page, ran_workchain):
 
 @pytest.mark.frontend
 def test_datanode_item(web_server, page, ran_workchain):
-    page.goto("http://localhost:8000/datanode/")
+    page.goto("/datanode/")
     # Check for Table Headers in DataGrid
     expect(page.get_by_role("columnheader", name="PK")).to_be_visible(timeout=10000)
     expect(page.get_by_role("columnheader", name="Created")).to_be_visible(
@@ -140,7 +140,7 @@ def test_datanode_item(web_server, page, ran_workchain):
 
 @pytest.mark.frontend
 def test_daemon(web_server, page, ran_workchain):
-    page.goto("http://localhost:8000/daemon/")
+    page.goto("/daemon/")
     # Verify that only one row is visible
     expect(page.locator(":nth-match(tr, 1)")).to_be_visible()
     expect(page.locator(":nth-match(tr, 2)")).to_be_hidden()
@@ -175,7 +175,7 @@ def test_daemon(web_server, page, ran_workchain):
 @pytest.mark.frontend
 def test_process_delete(web_server, page, ran_workchain):
     """Tests deleting the last process in DataGrid, accounting for pagination."""
-    page.goto("http://localhost:8000/process")
+    page.goto("/process")
 
     # Locate the last row and capture its unique PK from the link
     last_row = page.get_by_role("row").last
@@ -201,7 +201,7 @@ def test_process_delete(web_server, page, ran_workchain):
 @pytest.mark.frontend
 def test_datanode_delete(web_server, page, ran_workchain):
     """Tests deleting the last DataNode in DataGrid, accounting for pagination."""
-    page.goto("http://localhost:8000/datanode")
+    page.goto("/datanode")
 
     # Locate the last row and capture its unique PK from the link
     last_row = page.get_by_role("row").last

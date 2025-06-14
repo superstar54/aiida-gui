@@ -216,9 +216,9 @@ function WorkflowItem({endPoint = 'workchain'}) {
             // Fetch data from the backend
             let url;
             if (subPath) {
-              url = `http://localhost:8000/api/task/${pk}/${subPath}/${node.label}`;
+              url = `/api/task/${pk}/${subPath}/${node.label}`;
             } else {
-              url = `http://localhost:8000/api/task/${pk}/${node.label}`;
+              url = `/api/task/${pk}/${node.label}`;
             }
             console.log('Fetching data from:', url);
             const response = await fetch(url);
@@ -272,7 +272,7 @@ function WorkflowItem({endPoint = 'workchain'}) {
         console.log(nodePayload); // Good for debugging
 
         try {
-            const response = await fetch(`http://localhost:8000/api/process/tasks/${action}/${pk}`, {
+            const response = await fetch(`/api/process/tasks/${action}/${pk}`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

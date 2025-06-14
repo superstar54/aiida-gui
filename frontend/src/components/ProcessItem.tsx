@@ -12,7 +12,7 @@ export default function Process() {
 
   /* fetch once */
   useEffect(() => {
-    fetch(`http://localhost:8000/api/process/${pk}`)
+    fetch(`/api/process/${pk}`)
       .then(r => r.json())
       .then(setSummary);
   }, [pk]);

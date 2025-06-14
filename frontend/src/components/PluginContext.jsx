@@ -35,7 +35,7 @@ export function PluginProvider({ pluginNames, children }) {
       for (const name of pluginNames) {
         try {
           const mod = await import(
-            /* webpackIgnore: true */ `http://localhost:8000/plugins/${name}/static/${name}.esm.js`
+            /* webpackIgnore: true */ `/plugins/${name}/static/${name}.esm.js`
           );
           const def = mod.default || mod;
           if (def.dataView) Object.assign(mergedDataViews, def.dataView);
