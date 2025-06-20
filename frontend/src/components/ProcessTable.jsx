@@ -71,7 +71,7 @@ export const processColumns = linkPrefix => ([
 
 
 /* pause / play / kill buttons – now with confirmation for “Kill” */
-export function extraActions(row, { actionBase, refetch, openConfirmModal }) {
+export function extraProcessActions(row, { actionBase, refetch, openConfirmModal }) {
   const post = url => fetch(url, { method:'POST' }).then(() => refetch());
 
   const buttons = [];
@@ -131,7 +131,7 @@ export function ProcessTable() {
         actionBase={`/api/process`}
         config={{
           columns       : processColumns,
-          buildExtraActions: extraActions,
+          buildExtraActions: extraProcessActions,
           editableFields: ['label', 'description'],
         }}
       />
