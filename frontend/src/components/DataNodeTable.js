@@ -13,7 +13,7 @@ const dataColumns = linkPrefix => ([
 export default () =>
   <NodeTable
     title="Data nodes"
-    endpointBase="http://localhost:8000/api/datanode"
+    endpointBase="/api/datanode"
     linkPrefix="/datanode"
     config={{
       columns       : dataColumns,

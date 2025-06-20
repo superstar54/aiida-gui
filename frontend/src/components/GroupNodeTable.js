@@ -15,7 +15,7 @@ const groupColumns = linkPrefix => ([
 export default () =>
   <NodeTable
     title="Group nodes"
-    endpointBase="http://localhost:8000/api/groupnode"
+    endpointBase="/api/groupnode"
     linkPrefix="/groupnode"
     config={{
       columns       : groupColumns,

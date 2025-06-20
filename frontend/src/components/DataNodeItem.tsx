@@ -10,7 +10,7 @@ function DataNodeItem() {
   const [NodeData, setNodeData] = useState({ node_type: "" });
 
   useEffect(() => {
-    fetch(`http://localhost:8000/api/datanode/${pk}`)
+    fetch(`/api/datanode/${pk}`)
       .then(response => response.json())
       .then(data => {
         setNodeData(data);
